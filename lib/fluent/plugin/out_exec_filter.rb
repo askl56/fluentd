@@ -27,47 +27,47 @@ module Fluent
 
     config_param :command, :string
 
-    config_param :remove_prefix, :string, :default => nil
-    config_param :add_prefix, :string, :default => nil
+    config_param :remove_prefix, :string, default: nil
+    config_param :add_prefix, :string, default: nil
 
-    config_param :in_format, :default => :tsv do |val|
+    config_param :in_format, default: :tsv do |val|
       f = ExecUtil::SUPPORTED_FORMAT[val]
       raise ConfigError, "Unsupported in_format '#{val}'" unless f
       f
     end
-    config_param :in_keys, :default => [] do |val|
+    config_param :in_keys, default: [] do |val|
       val.split(',')
     end
-    config_param :in_tag_key, :default => nil
-    config_param :in_time_key, :default => nil
-    config_param :in_time_format, :default => nil
+    config_param :in_tag_key, default: nil
+    config_param :in_time_key, default: nil
+    config_param :in_time_format, default: nil
 
-    config_param :out_format, :default => :tsv do |val|
+    config_param :out_format, default: :tsv do |val|
       f = ExecUtil::SUPPORTED_FORMAT[val]
       raise ConfigError, "Unsupported out_format '#{val}'" unless f
       f
     end
-    config_param :out_keys, :default => [] do |val|  # for tsv format
+    config_param :out_keys, default: [] do |val|  # for tsv format
       val.split(',')
     end
-    config_param :out_tag_key, :default => nil
-    config_param :out_time_key, :default => nil
-    config_param :out_time_format, :default => nil
+    config_param :out_tag_key, default: nil
+    config_param :out_time_key, default: nil
+    config_param :out_time_format, default: nil
 
-    config_param :tag, :string, :default => nil
+    config_param :tag, :string, default: nil
 
-    config_param :time_key, :string, :default => nil
-    config_param :time_format, :string, :default => nil
+    config_param :time_key, :string, default: nil
+    config_param :time_format, :string, default: nil
 
-    config_param :localtime, :bool, :default => true
-    config_param :timezone, :string, :default => nil
-    config_param :num_children, :integer, :default => 1
+    config_param :localtime, :bool, default: true
+    config_param :timezone, :string, default: nil
+    config_param :num_children, :integer, default: 1
 
     # nil, 'none' or 0: no respawn, 'inf' or -1: infinite times, positive integer: try to respawn specified times only
-    config_param :child_respawn, :string, :default => nil
+    config_param :child_respawn, :string, default: nil
 
     # 0: output logs for all of messages to emit
-    config_param :suppress_error_log_interval, :time, :default => 0
+    config_param :suppress_error_log_interval, :time, default: 0
 
     config_set_default :flush_interval, 1
 
@@ -291,7 +291,7 @@ module Fluent
           chunk.write_to(@io)
         rescue Errno::EPIPE => e
           # Broken pipe (child process unexpectedly exited)
-          @log.warn "exec_filter Broken pipe, child process maybe exited.", :command => @command
+          @log.warn "exec_filter Broken pipe, child process maybe exited.", command: @command
           if try_respawn
             retry # retry chunk#write_to with child respawned
           else
@@ -314,19 +314,19 @@ module Fluent
 
           @respawns -= 1 if @respawns > 0
         end
-        @log.warn "exec_filter child process successfully respawned.", :command => @command, :respawns => @respawns
+        @log.warn "exec_filter child process successfully respawned.", command: @command, respawns: @respawns
         true
       end
 
       def run
         @parser.call(@io)
       rescue
-        @log.error "exec_filter thread unexpectedly failed with an error.", :command=>@command, :error=>$!.to_s
+        @log.error "exec_filter thread unexpectedly failed with an error.", command:@command, error:$!.to_s
         @log.warn_backtrace $!.backtrace
       ensure
         pid, stat = Process.waitpid2(@pid)
         unless @finished
-          @log.error "exec_filter process unexpectedly exited.", :command=>@command, :ecode=>stat.to_i
+          @log.error "exec_filter process unexpectedly exited.", command:@command, ecode:stat.to_i
           unless @respawns == 0
             @log.warn "exec_filter child process will respawn for next input data (respawns #{@respawns})."
           end
@@ -354,7 +354,7 @@ module Fluent
       router.emit(tag, time, record)
     rescue
       if @suppress_error_log_interval == 0 || Time.now.to_i > @next_log_time
-        log.error "exec_filter failed to emit", :error=>$!.to_s, :error_class=>$!.class.to_s, :record=>Yajl.dump(record)
+        log.error "exec_filter failed to emit", error:$!.to_s, error_class:$!.class.to_s, record:Yajl.dump(record)
         log.warn_backtrace $!.backtrace
         @next_log_time = Time.now.to_i + @suppress_error_log_interval
       end

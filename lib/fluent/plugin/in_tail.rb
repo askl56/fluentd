@@ -26,12 +26,12 @@ module Fluent
 
     config_param :path, :string
     config_param :tag, :string
-    config_param :exclude_path, :array, :default => []
-    config_param :rotate_wait, :time, :default => 5
-    config_param :pos_file, :string, :default => nil
-    config_param :read_from_head, :bool, :default => false
-    config_param :refresh_interval, :time, :default => 60
-    config_param :read_lines_limit, :integer, :default => 1000
+    config_param :exclude_path, :array, default: []
+    config_param :rotate_wait, :time, default: 5
+    config_param :pos_file, :string, default: nil
+    config_param :read_from_head, :bool, default: false
+    config_param :refresh_interval, :time, default: 60
+    config_param :read_lines_limit, :integer, default: 1000
 
     attr_reader :paths
 
@@ -214,7 +214,7 @@ module Fluent
     def run
       @loop.run
     rescue
-      log.error "unexpected error", :error=>$!.to_s
+      log.error "unexpected error", error:$!.to_s
       log.error_backtrace
     end
 
@@ -245,7 +245,7 @@ module Fluent
           end
         }
       rescue => e
-        log.warn line.dump, :error => e.to_s
+        log.warn line.dump, error: e.to_s
         log.debug_backtrace(e.backtrace)
       end
     end
@@ -715,8 +715,8 @@ module Fluent
 
     config_param :path, :string
     config_param :tag, :string
-    config_param :rotate_wait, :time, :default => 5
-    config_param :pos_file, :string, :default => nil
+    config_param :rotate_wait, :time, default: 5
+    config_param :pos_file, :string, default: nil
 
     attr_reader :paths
 
@@ -773,7 +773,7 @@ module Fluent
     def run
       @loop.run
     rescue
-      log.error "unexpected error", :error=>$!.to_s
+      log.error "unexpected error", error:$!.to_s
       log.error_backtrace
     end
 
@@ -789,7 +789,7 @@ module Fluent
             log.warn "pattern not match: #{line.inspect}"
           end
         rescue
-          log.warn line.dump, :error=>$!.to_s
+          log.warn line.dump, error:$!.to_s
           log.debug_backtrace
         end
       }

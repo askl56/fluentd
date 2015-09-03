@@ -12,8 +12,8 @@ class RootAgentTest < ::Test::Unit::TestCase
   end
 
   data(
-    'suppress interval' => [{:suppress_interval => 30}, {:@suppress_emit_error_log_interval => 30}],
-    'without source' => [{:without_source => true}, {:@without_source => true}]
+    'suppress interval' => [{suppress_interval: 30}, {:@suppress_emit_error_log_interval => 30}],
+    'without source' => [{without_source: true}, {:@without_source => true}]
     )
   def test_initialize_with_opt(data)
     opt, expected = data

@@ -27,13 +27,13 @@ module Fluent
     end
 
     config_param :command, :string
-    config_param :keys, :default => [] do |val|
+    config_param :keys, default: [] do |val|
       val.split(',')
     end
-    config_param :tag_key, :string, :default => nil
-    config_param :time_key, :string, :default => nil
-    config_param :time_format, :string, :default => nil
-    config_param :format, :default => :tsv do |val|
+    config_param :tag_key, :string, default: nil
+    config_param :time_key, :string, default: nil
+    config_param :time_format, :string, default: nil
+    config_param :format, default: :tsv do |val|
       f = ExecUtil::SUPPORTED_FORMAT[val]
       raise ConfigError, "Unsupported format '#{val}'" unless f
       f

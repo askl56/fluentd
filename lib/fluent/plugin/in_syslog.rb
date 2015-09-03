@@ -64,10 +64,10 @@ module Fluent
       require 'fluent/plugin/socket_util'
     end
 
-    config_param :port, :integer, :default => 5140
-    config_param :bind, :string, :default => '0.0.0.0'
+    config_param :port, :integer, default: 5140
+    config_param :bind, :string, default: '0.0.0.0'
     config_param :tag, :string
-    config_param :protocol_type, :default => :udp do |val|
+    config_param :protocol_type, default: :udp do |val|
       case val.downcase
       when 'tcp'
         :tcp
@@ -77,9 +77,9 @@ module Fluent
         raise ConfigError, "syslog input protocol type should be 'tcp' or 'udp'"
       end
     end
-    config_param :include_source_host, :bool, :default => false
-    config_param :source_host_key, :string, :default => 'source_host'.freeze
-    config_param :blocking_timeout, :time, :default => 0.5
+    config_param :include_source_host, :bool, default: false
+    config_param :source_host_key, :string, default: 'source_host'.freeze
+    config_param :blocking_timeout, :time, default: 0.5
 
     def configure(conf)
       super
@@ -119,7 +119,7 @@ module Fluent
     def run
       @loop.run(@blocking_timeout)
     rescue
-      log.error "unexpected error", :error=>$!.to_s
+      log.error "unexpected error", error:$!.to_s
       log.error_backtrace
     end
 
@@ -144,14 +144,14 @@ module Fluent
         emit(pri, time, record)
       }
     rescue => e
-      log.error data.dump, :error => e.to_s
+      log.error data.dump, error: e.to_s
       log.error_backtrace
     end
 
     def receive_data(data, addr)
       @parser.parse(data) { |time, record|
         unless time && record
-          log.warn "invalid syslog message", :data => data
+          log.warn "invalid syslog message", data: data
           return
         end
 
@@ -160,7 +160,7 @@ module Fluent
         emit(pri, time, record)
       }
     rescue => e
-      log.error data.dump, :error => e.to_s
+      log.error data.dump, error: e.to_s
       log.error_backtrace
     end
 
@@ -186,7 +186,7 @@ module Fluent
 
       router.emit(tag, time, record)
     rescue => e
-      log.error "syslog failed to emit", :error => e.to_s, :error_class => e.class.to_s, :tag => tag, :record => Yajl.dump(record)
+      log.error "syslog failed to emit", error: e.to_s, error_class: e.class.to_s, tag: tag, record: Yajl.dump(record)
     end
   end
 end

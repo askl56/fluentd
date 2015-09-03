@@ -25,12 +25,12 @@ module Fluent
       super
     end
 
-    config_param :remove_keys, :string, :default => nil
-    config_param :keep_keys, :string, :default => nil
-    config_param :renew_record, :bool, :default => false
-    config_param :renew_time_key, :string, :default => nil
-    config_param :enable_ruby, :bool, :default => false
-    config_param :auto_typecast, :bool, :default => false # false for lower version compatibility
+    config_param :remove_keys, :string, default: nil
+    config_param :keep_keys, :string, default: nil
+    config_param :renew_record, :bool, default: false
+    config_param :renew_time_key, :string, default: nil
+    config_param :enable_ruby, :bool, default: false
+    config_param :auto_typecast, :bool, default: false # false for lower version compatibility
 
     def configure(conf)
       super
@@ -54,8 +54,8 @@ module Fluent
       end
 
       placeholder_expander_params = {
-        :log           => log,
-        :auto_typecast => @auto_typecast,
+        log: log,
+        auto_typecast: @auto_typecast,
       }
       @placeholder_expander =
         if @enable_ruby
@@ -94,7 +94,7 @@ module Fluent
       end
       new_es
     rescue => e
-      log.warn "failed to reform records", :error_class => e.class, :error => e.message
+      log.warn "failed to reform records", error_class: e.class, error: e.message
       log.warn_backtrace
       log.debug "map:#{@map} record:#{last_record} placeholders:#{placeholders}"
     end
@@ -108,7 +108,7 @@ module Fluent
         value_str
       end
     rescue => e
-      log.warn "failed to parse #{value_str} as json. Assuming #{value_str} is a string", :error_class => e.class, :error => e.message
+      log.warn "failed to parse #{value_str} as json. Assuming #{value_str} is a string", error_class: e.class, error: e.message
       value_str # emit as string
     end
 
@@ -241,7 +241,7 @@ module Fluent
         interpolated = str.gsub(/\$\{([^}]+)\}/, '#{\1}') # ${..} => #{..}
         eval "\"#{interpolated}\"", @placeholders.instance_eval { binding }
       rescue => e
-        log.warn "failed to expand `#{str}`", :error_class => e.class, :error => e.message
+        log.warn "failed to expand `#{str}`", error_class: e.class, error: e.message
         log.warn_backtrace
         nil
       end

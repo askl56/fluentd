@@ -18,7 +18,7 @@ module Fluent
   class StdoutOutput < Output
     Plugin.register_output('stdout', self)
 
-    config_param :output_type, :default => 'json'
+    config_param :output_type, default: 'json'
 
     def configure(conf)
       super

@@ -18,7 +18,7 @@ module Fluent
   class CopyOutput < MultiOutput
     Plugin.register_output('copy', self)
 
-    config_param :deep_copy, :bool, :default => false
+    config_param :deep_copy, :bool, default: false
 
     def initialize
       super

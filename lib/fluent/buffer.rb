@@ -139,8 +139,8 @@ module Fluent
     # This configuration assumes plugins to send records to a remote server.
     # Local file based plugins which should provide more reliability and efficiency
     # should override buffer_chunk_limit with a larger size.
-    config_param :buffer_chunk_limit, :size, :default => 8*1024*1024
-    config_param :buffer_queue_limit, :integer, :default => 256
+    config_param :buffer_chunk_limit, :size, default: 8*1024*1024
+    config_param :buffer_queue_limit, :integer, default: 256
 
     alias chunk_limit buffer_chunk_limit
     alias chunk_limit= buffer_chunk_limit=

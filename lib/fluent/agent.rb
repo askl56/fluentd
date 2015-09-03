@@ -80,7 +80,7 @@ module Fluent
           begin
             f.shutdown
           rescue => e
-            log.warn "unexpected error while shutting down filter plugins", :plugin => f.class, :plugin_id => f.plugin_id, :error_class => e.class, :error => e
+            log.warn "unexpected error while shutting down filter plugins", plugin: f.class, plugin_id: f.plugin_id, error_class: e.class, error: e
             log.warn_backtrace
           end
         end
@@ -93,7 +93,7 @@ module Fluent
           begin
             o.shutdown
           rescue => e
-            log.warn "unexpected error while shutting down output plugins", :plugin => o.class, :plugin_id => o.plugin_id, :error_class => e.class, :error => e
+            log.warn "unexpected error while shutting down output plugins", plugin: o.class, plugin_id: o.plugin_id, error_class: e.class, error: e
             log.warn_backtrace
           end
         end
@@ -113,7 +113,7 @@ module Fluent
             flush_recursive(o.outputs)
           end
         rescue => e
-          log.debug "error while force flushing", :error_class => e.class, :error => e
+          log.debug "error while force flushing", error_class: e.class, error: e
           log.debug_backtrace
         end
       }
@@ -161,16 +161,16 @@ module Fluent
         c = (@count += 1)
         if c < 512
           if Math.log(c) / Math.log(2) % 1.0 == 0
-            @log.warn "no patterns matched", :tag => tag
+            @log.warn "no patterns matched", tag: tag
             return
           end
         else
           if c % 512 == 0
-            @log.warn "no patterns matched", :tag => tag
+            @log.warn "no patterns matched", tag: tag
             return
           end
         end
-        @log.on_trace { @log.trace "no patterns matched", :tag => tag }
+        @log.on_trace { @log.trace "no patterns matched", tag: tag }
       end
 
       def start

@@ -23,16 +23,16 @@ module Fluent
       require 'fluent/plugin/socket_util'
     end
 
-    config_param :port, :integer, :default => DEFAULT_LISTEN_PORT
-    config_param :bind, :string, :default => '0.0.0.0'
-    config_param :backlog, :integer, :default => nil
+    config_param :port, :integer, default: DEFAULT_LISTEN_PORT
+    config_param :bind, :string, default: '0.0.0.0'
+    config_param :backlog, :integer, default: nil
     # SO_LINGER 0 to send RST rather than FIN to avoid lots of connections sitting in TIME_WAIT at src
-    config_param :linger_timeout, :integer, :default => 0
+    config_param :linger_timeout, :integer, default: 0
     # This option is for Cool.io's loop wait timeout to avoid loop stuck at shutdown. Almost users don't need to change this value.
-    config_param :blocking_timeout, :time, :default => 0.5
+    config_param :blocking_timeout, :time, default: 0.5
 
-    config_param :chunk_size_warn_limit, :size, :default => nil
-    config_param :chunk_size_limit, :size, :default => nil
+    config_param :chunk_size_warn_limit, :size, default: nil
+    config_param :chunk_size_limit, :size, default: nil
 
     def configure(conf)
       super
@@ -77,7 +77,7 @@ module Fluent
       s
     end
 
-    #config_param :path, :string, :default => DEFAULT_SOCKET_PATH
+    #config_param :path, :string, default: DEFAULT_SOCKET_PATH
     #def listen
     #  if File.exist?(@path)
     #    File.unlink(@path)
@@ -90,7 +90,7 @@ module Fluent
     def run
       @loop.run(@blocking_timeout)
     rescue => e
-      log.error "unexpected error", :error => e, :error_class => e.class
+      log.error "unexpected error", error: e, error_class: e.class
       log.error_backtrace
     end
 
@@ -232,7 +232,7 @@ module Fluent
         @chunk_counter += data.bytesize
         @y << data
       rescue => e
-        @log.error "forward error", :error => e, :error_class => e.class
+        @log.error "forward error", error: e, error_class: e.class
         @log.error_backtrace
         close
       end
@@ -245,7 +245,7 @@ module Fluent
           @chunk_counter = 0
         end
       rescue => e
-        @log.error "forward error", :error => e, :error_class => e.class
+        @log.error "forward error", error: e, error_class: e.class
         @log.error_backtrace
         close
       end

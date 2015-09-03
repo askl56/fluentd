@@ -24,16 +24,16 @@ module Fluent
     }
 
     config_param :path, :string
-    config_param :format, :string, :default => 'out_file'
-    config_param :append, :bool, :default => false
-    config_param :compress, :default => nil do |val|
+    config_param :format, :string, default: 'out_file'
+    config_param :append, :bool, default: false
+    config_param :compress, default: nil do |val|
       c = SUPPORTED_COMPRESS[val]
       unless c
         raise ConfigError, "Unsupported compression algorithm '#{val}'"
       end
       c
     end
-    config_param :symlink_path, :string, :default => nil
+    config_param :symlink_path, :string, default: nil
 
     def initialize
       require 'zlib'
@@ -79,7 +79,7 @@ module Fluent
 
     def write(chunk)
       path = generate_path(chunk.key)
-      FileUtils.mkdir_p File.dirname(path), :mode => DEFAULT_DIR_PERMISSION
+      FileUtils.mkdir_p File.dirname(path), mode: DEFAULT_DIR_PERMISSION
 
       case @compress
       when nil

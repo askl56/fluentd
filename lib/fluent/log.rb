@@ -343,7 +343,7 @@ module Fluent
   module PluginLoggerMixin
     def self.included(klass)
       klass.instance_eval {
-        config_param :log_level, :string, :default => nil, :alias => :@log_level
+        config_param :log_level, :string, default: nil, alias: :@log_level
       }
     end
 

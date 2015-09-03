@@ -25,8 +25,8 @@ module Fluent
       super
     end
 
-    config_param :bind, :string, :default => '0.0.0.0'
-    config_param :port, :integer, :default => 24220
+    config_param :bind, :string, default: '0.0.0.0'
+    config_param :port, :integer, default: 24220
 
     class MonitorServlet < WEBrick::HTTPServlet::AbstractServlet
       def initialize(server, agent)
@@ -202,10 +202,10 @@ module Fluent
     def start
       log.debug "listening monitoring http server on http://#{@bind}:#{@port}/api/plugins"
       @srv = WEBrick::HTTPServer.new({
-          :BindAddress => @bind,
-          :Port => @port,
-          :Logger => WEBrick::Log.new(STDERR, WEBrick::Log::FATAL),
-          :AccessLog => [],
+          BindAddress: @bind,
+          Port: @port,
+          Logger: WEBrick::Log.new(STDERR, WEBrick::Log::FATAL),
+          AccessLog: [],
         })
       @srv.mount('/api/plugins', LTSVMonitorServlet, self)
       @srv.mount('/api/plugins.json', JSONMonitorServlet, self)
