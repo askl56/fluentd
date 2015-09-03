@@ -25,16 +25,16 @@ module Fluent
     end
 
     config_param :bind, :string, default: '0.0.0.0'
-    config_param :port, :integer, default: 24230
+    config_param :port, :integer, default: 24_230
     config_param :unix_path, :string, default: nil
-    #config_param :unix_mode  # TODO
+    # config_param :unix_mode  # TODO
     config_param :object, :string, default: 'Engine'
 
     def configure(conf)
       super
       if @unix_path
         unless ::Fluent::FileUtil.writable?(@unix_path)
-          raise ConfigError, "in_debug_agent: `#{@unix_path}` is not writable"
+          fail ConfigError, "in_debug_agent: `#{@unix_path}` is not writable"
         end
       end
     end
@@ -46,7 +46,7 @@ module Fluent
       else
         uri = "druby://#{@bind}:#{@port}"
       end
-      log.info "listening dRuby", uri: uri, object: @object
+      log.info 'listening dRuby', uri: uri, object: @object
       obj = eval(@object)
       @server = DRb::DRbServer.new(uri, obj)
     end

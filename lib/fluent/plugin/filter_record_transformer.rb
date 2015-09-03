@@ -39,23 +39,21 @@ module Fluent
       # <record></record> directive
       conf.elements.select { |element| element.name == 'record' }.each do |element|
         element.each_pair do |k, v|
-          element.has_key?(k) # to suppress unread configuration warning
+          element.key?(k) # to suppress unread configuration warning
           @map[k] = parse_value(v)
         end
       end
 
-      if @remove_keys
-        @remove_keys = @remove_keys.split(',')
-      end
+      @remove_keys = @remove_keys.split(',') if @remove_keys
 
       if @keep_keys
-        raise Fluent::ConfigError, "`renew_record` must be true to use `keep_keys`" unless @renew_record
+        fail Fluent::ConfigError, '`renew_record` must be true to use `keep_keys`' unless @renew_record
         @keep_keys = @keep_keys.split(',')
       end
 
       placeholder_expander_params = {
         log: log,
-        auto_typecast: @auto_typecast,
+        auto_typecast: @auto_typecast
       }
       @placeholder_expander =
         if @enable_ruby
@@ -81,20 +79,20 @@ module Fluent
         'tag_parts' => tag_parts,
         'tag_prefix' => tag_prefix,
         'tag_suffix' => tag_suffix,
-        'hostname' => @hostname,
+        'hostname' => @hostname
       }
       last_record = nil
       es.each do |time, record|
         last_record = record # for debug log
         new_record = reform(time, record, placeholders)
-        if @renew_time_key && new_record.has_key?(@renew_time_key)
+        if @renew_time_key && new_record.key?(@renew_time_key)
           time = new_record[@renew_time_key].to_i
         end
         new_es.add(time, new_record)
       end
       new_es
     rescue => e
-      log.warn "failed to reform records", error_class: e.class, error: e.message
+      log.warn 'failed to reform records', error_class: e.class, error: e.message
       log.warn_backtrace
       log.debug "map:#{@map} record:#{last_record} placeholders:#{placeholders}"
     end
@@ -116,9 +114,9 @@ module Fluent
       @placeholder_expander.prepare_placeholders(time, record, opts)
 
       new_record = @renew_record ? {} : record.dup
-      @keep_keys.each {|k| new_record[k] = record[k]} if @keep_keys and @renew_record
+      @keep_keys.each { |k| new_record[k] = record[k] } if @keep_keys && @renew_record
       new_record.merge!(expand_placeholders(@map))
-      @remove_keys.each {|k| new_record.delete(k) } if @remove_keys
+      @remove_keys.each { |k| new_record.delete(k) } if @remove_keys
 
       new_record
     end
@@ -145,8 +143,8 @@ module Fluent
     def tag_prefix(tag_parts)
       return [] if tag_parts.empty?
       tag_prefix = [tag_parts.first]
-      1.upto(tag_parts.size-1).each do |i|
-        tag_prefix[i] = "#{tag_prefix[i-1]}.#{tag_parts[i]}"
+      1.upto(tag_parts.size - 1).each do |i|
+        tag_prefix[i] = "#{tag_prefix[i - 1]}.#{tag_parts[i]}"
       end
       tag_prefix
     end
@@ -155,8 +153,8 @@ module Fluent
       return [] if tag_parts.empty?
       rev_tag_parts = tag_parts.reverse
       rev_tag_suffix = [rev_tag_parts.first]
-      1.upto(tag_parts.size-1).each do |i|
-        rev_tag_suffix[i] = "#{rev_tag_parts[i]}.#{rev_tag_suffix[i-1]}"
+      1.upto(tag_parts.size - 1).each do |i|
+        rev_tag_suffix[i] = "#{rev_tag_parts[i]}.#{rev_tag_suffix[i - 1]}"
       end
       rev_tag_suffix.reverse!
     end
@@ -171,15 +169,15 @@ module Fluent
 
       def prepare_placeholders(time, record, opts)
         placeholders = { '${time}' => Time.at(time).to_s }
-        record.each {|key, value| placeholders.store("${#{key}}", value) }
+        record.each { |key, value| placeholders.store("${#{key}}", value) }
 
         opts.each do |key, value|
-          if value.kind_of?(Array) # tag_parts, etc
+          if value.is_a?(Array) # tag_parts, etc
             size = value.size
-            value.each_with_index { |v, idx|
+            value.each_with_index do |v, idx|
               placeholders.store("${#{key}[#{idx}]}", v)
-              placeholders.store("${#{key}[#{idx-size}]}", v) # support [-1]
-            }
+              placeholders.store("${#{key}[#{idx - size}]}", v) # support [-1]
+            end
           else # string, interger, float, and others?
             placeholders.store("${#{key}}", value)
           end
@@ -188,21 +186,22 @@ module Fluent
         @placeholders = placeholders
       end
 
-      def expand(str, force_stringify=false)
-        if @auto_typecast and !force_stringify
+      def expand(str, force_stringify = false)
+        if @auto_typecast && !force_stringify
           single_placeholder_matched = str.match(/\A(\${[^}]+}|__[A-Z_]+__)\z/)
           if single_placeholder_matched
-            log_unknown_placeholder($1)
+            log_unknown_placeholder(Regexp.last_match(1))
             return @placeholders[single_placeholder_matched[1]]
           end
         end
-        str.gsub(/(\${[^}]+}|__[A-Z_]+__)/) {
-          log_unknown_placeholder($1)
-          @placeholders[$1]
-        }
+        str.gsub(/(\${[^}]+}|__[A-Z_]+__)/) do
+          log_unknown_placeholder(Regexp.last_match(1))
+          @placeholders[Regexp.last_match(1)]
+        end
       end
 
       private
+
       def log_unknown_placeholder(placeholder)
         unless @placeholders.include?(placeholder)
           log.warn "unknown placeholder `#{placeholder}` found"
@@ -226,12 +225,12 @@ module Fluent
       def prepare_placeholders(time, record, opts)
         struct = UndefOpenStruct.new(record)
         struct.time = Time.at(time)
-        opts.each {|key, value| struct.__send__("#{key}=", value) }
+        opts.each { |key, value| struct.__send__("#{key}=", value) }
         @placeholders = struct
       end
 
-      def expand(str, force_stringify=false)
-        if @auto_typecast and !force_stringify
+      def expand(str, force_stringify = false)
+        if @auto_typecast && !force_stringify
           single_placeholder_matched = str.match(/\A\${([^}]+)}\z/)
           if single_placeholder_matched
             code = single_placeholder_matched[1]

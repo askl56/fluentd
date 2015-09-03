@@ -26,7 +26,7 @@ module Fluent
   class Agent
     include Configurable
 
-    def initialize(opts = {})
+    def initialize(_opts = {})
       super()
 
       @context = nil
@@ -51,7 +51,7 @@ module Fluent
       super
 
       # initialize <match> and <filter> elements
-      conf.elements.select { |e| e.name == 'filter' || e.name == 'match' }.each { |e|
+      conf.elements.select { |e| e.name == 'filter' || e.name == 'match' }.each do |e|
         pattern = e.arg.empty? ? '**' : e.arg
         type = e['@type'] || e['type']
         if e.name == 'filter'
@@ -59,45 +59,45 @@ module Fluent
         else
           add_match(type, pattern, e)
         end
-      }
+      end
     end
 
     def start
-      @outputs.each { |o|
+      @outputs.each do |o|
         o.start
         @started_outputs << o
-      }
+      end
 
-      @filters.each { |f|
+      @filters.each do |f|
         f.start
         @started_filters << f
-      }
+      end
     end
 
     def shutdown
-      @started_filters.map { |f|
+      @started_filters.map do |f|
         Thread.new do
           begin
             f.shutdown
           rescue => e
-            log.warn "unexpected error while shutting down filter plugins", plugin: f.class, plugin_id: f.plugin_id, error_class: e.class, error: e
+            log.warn 'unexpected error while shutting down filter plugins', plugin: f.class, plugin_id: f.plugin_id, error_class: e.class, error: e
             log.warn_backtrace
           end
         end
-      }.each { |t| t.join }
+      end.each(&:join)
 
       # Output plugin as filter emits records at shutdown so emit problem still exist.
       # This problem will be resolved after actual filter mechanizm.
-      @started_outputs.map { |o|
+      @started_outputs.map do |o|
         Thread.new do
           begin
             o.shutdown
           rescue => e
-            log.warn "unexpected error while shutting down output plugins", plugin: o.class, plugin_id: o.plugin_id, error_class: e.class, error: e
+            log.warn 'unexpected error while shutting down output plugins', plugin: o.class, plugin_id: o.plugin_id, error_class: e.class, error: e
             log.warn_backtrace
           end
         end
-      }.each { |t| t.join }
+      end.each(&:join)
     end
 
     def flush!
@@ -105,7 +105,7 @@ module Fluent
     end
 
     def flush_recursive(array)
-      array.each { |o|
+      array.each do |o|
         begin
           if o.is_a?(BufferedOutput)
             o.force_flush
@@ -113,10 +113,10 @@ module Fluent
             flush_recursive(o.outputs)
           end
         rescue => e
-          log.debug "error while force flushing", error_class: e.class, error: e
+          log.debug 'error while force flushing', error_class: e.class, error: e
           log.debug_backtrace
         end
-      }
+      end
     end
 
     def add_match(type, pattern, conf)
@@ -144,10 +144,10 @@ module Fluent
     end
 
     # For handling invalid record
-    def emit_error_event(tag, time, record, error)
+    def emit_error_event(_tag, _time, _record, _error)
     end
 
-    def handle_emits_error(tag, es, error)
+    def handle_emits_error(_tag, _es, _error)
     end
 
     class NoMatchMatch
@@ -156,21 +156,21 @@ module Fluent
         @count = 0
       end
 
-      def emit(tag, es, chain)
-        # TODO use time instead of num of records
+      def emit(tag, _es, _chain)
+        # TODO: use time instead of num of records
         c = (@count += 1)
         if c < 512
           if Math.log(c) / Math.log(2) % 1.0 == 0
-            @log.warn "no patterns matched", tag: tag
+            @log.warn 'no patterns matched', tag: tag
             return
           end
         else
           if c % 512 == 0
-            @log.warn "no patterns matched", tag: tag
+            @log.warn 'no patterns matched', tag: tag
             return
           end
         end
-        @log.on_trace { @log.trace "no patterns matched", tag: tag }
+        @log.on_trace { @log.trace 'no patterns matched', tag: tag }
       end
 
       def start

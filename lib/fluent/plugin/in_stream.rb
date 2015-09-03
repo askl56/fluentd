@@ -33,19 +33,19 @@ module Fluent
     end
 
     def shutdown
-      @loop.watchers.each {|w| w.detach }
+      @loop.watchers.each(&:detach)
       @loop.stop
       @lsock.close
       @thread.join
     end
 
-    #def listen
-    #end
+    # def listen
+    # end
 
     def run
       @loop.run(@blocking_timeout)
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
@@ -72,7 +72,7 @@ module Fluent
     #   3: object record
     # }
     def on_message(msg)
-      # TODO format error
+      # TODO: format error
       tag = msg[0].to_s
       entries = msg[1]
 
@@ -84,13 +84,13 @@ module Fluent
       elsif entries.class == Array
         # Forward
         es = MultiEventStream.new
-        entries.each {|e|
+        entries.each do|e|
           record = e[1]
           next if record.nil?
           time = e[0].to_i
           time = (now ||= Engine.now) if time == 0
           es.add(time, record)
-        }
+        end
         router.emit_stream(tag, es)
 
       else
@@ -108,15 +108,15 @@ module Fluent
       def initialize(io, log, on_message)
         super(io)
         if io.is_a?(TCPSocket)
-          opt = [1, @timeout.to_i].pack('I!I!')  # { int l_onoff; int l_linger; }
+          opt = [1, @timeout.to_i].pack('I!I!') # { int l_onoff; int l_linger; }
           io.setsockopt(Socket::SOL_SOCKET, Socket::SO_LINGER, opt)
         end
         @on_message = on_message
         @log = log
-        @log.trace {
+        @log.trace do
           remote_port, remote_addr = *Socket.unpack_sockaddr_in(@_io.getpeername) rescue nil
-          "accepted fluent socket from '#{remote_addr}:#{remote_port}': object_id=#{self.object_id}"
-        }
+          "accepted fluent socket from '#{remote_addr}:#{remote_port}': object_id=#{object_id}"
+        end
       end
 
       def on_connect
@@ -142,7 +142,7 @@ module Fluent
       def on_read_json(data)
         @y << data
       rescue
-        @log.error "unexpected error", error:$!.to_s
+        @log.error 'unexpected error', error: $ERROR_INFO.to_s
         @log.error_backtrace
         close
       end
@@ -150,13 +150,13 @@ module Fluent
       def on_read_msgpack(data)
         @u.feed_each(data, &@on_message)
       rescue
-        @log.error "unexpected error", error:$!.to_s
+        @log.error 'unexpected error', error: $ERROR_INFO.to_s
         @log.error_backtrace
         close
       end
 
       def on_close
-        @log.trace { "closed fluent socket object_id=#{self.object_id}" }
+        @log.trace { "closed fluent socket object_id=#{object_id}" }
       end
     end
   end
@@ -169,13 +169,11 @@ module Fluent
 
     def configure(conf)
       super
-      #log.warn "'unix' input is obsoleted and will be removed. Use 'forward' instead."
+      # log.warn "'unix' input is obsoleted and will be removed. Use 'forward' instead."
     end
 
     def listen
-      if File.exist?(@path)
-        File.unlink(@path)
-      end
+      File.unlink(@path) if File.exist?(@path)
       FileUtils.mkdir_p File.dirname(@path)
       log.debug "listening fluent socket on #{@path}"
       s = Coolio::UNIXServer.new(@path, Handler, log, method(:on_message))

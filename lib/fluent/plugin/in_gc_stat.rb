@@ -35,8 +35,8 @@ module Fluent
       def on_timer
         @callback.call
       rescue
-        # TODO log?
-        @log.error $!.to_s
+        # TODO: log?
+        @log.error $ERROR_INFO.to_s
         @log.error_backtrace
       end
     end
@@ -53,7 +53,7 @@ module Fluent
     end
 
     def shutdown
-      @loop.watchers.each {|w| w.detach }
+      @loop.watchers.each(&:detach)
       @loop.stop
       @thread.join
     end
@@ -61,7 +61,7 @@ module Fluent
     def run
       @loop.run
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 

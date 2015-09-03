@@ -20,12 +20,12 @@ module Fluent
       begin
         return regexp.match(string)
       rescue ArgumentError => e
-        raise e unless e.message.index("invalid byte sequence in".freeze).zero?
+        raise e unless e.message.index('invalid byte sequence in'.freeze).zero?
         log.info "invalid byte sequence is replaced in `#{string}`"
         string = string.scrub('?')
         retry
       end
-      return true
+      true
     end
     module_function :match_regexp
   end

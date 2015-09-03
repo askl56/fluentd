@@ -17,15 +17,15 @@ class FluentInputTest < ::Test::Unit::TestCase
     assert_equal Engine.root_agent.event_router, d.instance.router
 
     d = nil
-    assert_nothing_raised { 
+    assert_nothing_raised do
       d = create_driver('@label @known')
-    }
+    end
     expected = Engine.root_agent.find_label('@known').event_router
     assert_equal expected, d.instance.router
 
     # TestDriver helps to create a label instance automatically, so directly test here
-    assert_raise(ArgumentError) {
+    assert_raise(ArgumentError) do
       Fluent::Input.new.configure(Config.parse('@label @unknown', '(test)', '(test_dir)', true))
-    }
+    end
   end
 end

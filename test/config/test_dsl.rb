@@ -1,6 +1,6 @@
 require_relative '../helper'
 require 'fluent/config/element'
-require "fluent/config/dsl"
+require 'fluent/config/dsl'
 
 DSL_CONFIG_EXAMPLE = %q[
 worker {
@@ -57,23 +57,23 @@ source {
 }
 ]
 
-DSL_CONFIG_RETURNS_NON_ELEMENT = %q[
+DSL_CONFIG_RETURNS_NON_ELEMENT = '
 worker {
 }
 []
-]
+'
 
-DSL_CONFIG_WRONG_SYNTAX1 = %q[
+DSL_CONFIG_WRONG_SYNTAX1 = '
 match
-]
-DSL_CONFIG_WRONG_SYNTAX2 = %q[
+'
+DSL_CONFIG_WRONG_SYNTAX2 = "
 match('aa','bb'){
   type :null
 }
-]
-DSL_CONFIG_WRONG_SYNTAX3 = %q[
+"
+DSL_CONFIG_WRONG_SYNTAX3 = "
 match('aa','bb')
-]
+"
 
 module Fluent::Config
   class TestDSLParser < ::Test::Unit::TestCase
@@ -106,7 +106,7 @@ module Fluent::Config
           assert_predicate(ele4.arg, :empty?)
           assert_equal(2, ele4.keys.size)
           assert_equal('tail', ele4['type'])
-          assert_equal("/var/log/httpd/access.part4.log", ele4['path'])
+          assert_equal('/var/log/httpd/access.part4.log', ele4['path'])
         end
 
         test 'makes user-defined sections with blocks' do
@@ -116,7 +116,7 @@ module Fluent::Config
           assert_equal('bar.**', filter0.arg)
           assert_equal('hoge', filter0['type'])
           assert_equal('moge', filter0['val1'])
-          assert_equal(JSON.dump(['foo', 'bar', 'baz']), filter0['val2'])
+          assert_equal(JSON.dump(%w(foo bar baz)), filter0['val2'])
           assert_equal('10', filter0['val3'])
           assert_equal('hoge', filter0['id'])
 

@@ -11,17 +11,17 @@ class ExecOutputTest < Test::Unit::TestCase
 
   TMP_DIR = File.dirname(__FILE__) + "/../tmp/out_exec#{ENV['TEST_ENV_NUMBER']}"
 
-  CONFIG = %[
+  CONFIG = %(
     buffer_path #{TMP_DIR}/buffer
     command cat >#{TMP_DIR}/out
     localtime
-  ]
-  TSV_CONFIG = %[
+  )
+  TSV_CONFIG = %(
     keys "time,tag,k1"
     tag_key "tag"
     time_key "time"
     time_format %Y-%m-%d %H:%M:%S
-  ]
+  )
 
   def create_driver(conf = TSV_CONFIG)
     config = CONFIG + conf
@@ -29,18 +29,18 @@ class ExecOutputTest < Test::Unit::TestCase
   end
 
   def create_test_case
-    time = Time.parse("2011-01-02 13:14:15").to_i
-    tests = [{"k1"=>"v1","kx"=>"vx"}, {"k1"=>"v2","kx"=>"vx"}]
-    return time, tests
+    time = Time.parse('2011-01-02 13:14:15').to_i
+    tests = [{ 'k1' => 'v1', 'kx' => 'vx' }, { 'k1' => 'v2', 'kx' => 'vx' }]
+    [time, tests]
   end
 
   def test_configure
     d = create_driver
 
-    assert_equal ["time","tag","k1"], d.instance.keys
-    assert_equal "tag", d.instance.tag_key
-    assert_equal "time", d.instance.time_key
-    assert_equal "%Y-%m-%d %H:%M:%S", d.instance.time_format
+    assert_equal %w(time tag k1), d.instance.keys
+    assert_equal 'tag', d.instance.tag_key
+    assert_equal 'time', d.instance.time_key
+    assert_equal '%Y-%m-%d %H:%M:%S', d.instance.time_format
     assert_equal true, d.instance.localtime
   end
 
@@ -52,14 +52,14 @@ class ExecOutputTest < Test::Unit::TestCase
       d.emit(test, time)
     }
 
-    d.expect_format %[2011-01-02 13:14:15\ttest\tv1\n]
-    d.expect_format %[2011-01-02 13:14:15\ttest\tv2\n]
+    d.expect_format %(2011-01-02 13:14:15\ttest\tv1\n)
+    d.expect_format %(2011-01-02 13:14:15\ttest\tv2\n)
 
     d.run
   end
 
   def test_format_json
-    d = create_driver("format json")
+    d = create_driver('format json')
     time, tests = create_test_case
 
     tests.each { |test|
@@ -71,7 +71,7 @@ class ExecOutputTest < Test::Unit::TestCase
   end
 
   def test_format_msgpack
-    d = create_driver("format msgpack")
+    d = create_driver('format msgpack')
     time, tests = create_test_case
 
     tests.each { |test|
@@ -97,9 +97,8 @@ class ExecOutputTest < Test::Unit::TestCase
 
     data = File.read(expect_path)
     expect_data =
-      %[2011-01-02 13:14:15\ttest\tv1\n] +
-      %[2011-01-02 13:14:15\ttest\tv2\n]
+      %(2011-01-02 13:14:15\ttest\tv1\n) +
+      %(2011-01-02 13:14:15\ttest\tv2\n)
     assert_equal expect_data, data
   end
 end
-

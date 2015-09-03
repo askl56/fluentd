@@ -43,26 +43,26 @@ module Fluent
         msg.chomp!
         @callback.call(msg, addr)
       rescue => e
-        @log.error "unexpected error", error: e, error_class: e.class
+        @log.error 'unexpected error', error: e, error_class: e.class
       end
     end
 
     class TcpHandler < Coolio::Socket
-      PEERADDR_FAILED = ["?", "?", "name resolusion failed", "?"]
+      PEERADDR_FAILED = ['?', '?', 'name resolusion failed', '?']
 
       def initialize(io, log, delimiter, callback)
         super(io)
         if io.is_a?(TCPSocket)
           @addr = (io.peeraddr rescue PEERADDR_FAILED)
 
-          opt = [1, @timeout.to_i].pack('I!I!')  # { int l_onoff; int l_linger; }
+          opt = [1, @timeout.to_i].pack('I!I!') # { int l_onoff; int l_linger; }
           io.setsockopt(Socket::SOL_SOCKET, Socket::SO_LINGER, opt)
         end
         @delimiter = delimiter
         @callback = callback
         @log = log
-        @log.trace { "accepted fluent socket object_id=#{self.object_id}" }
-        @buffer = "".force_encoding('ASCII-8BIT')
+        @log.trace { "accepted fluent socket object_id=#{object_id}" }
+        @buffer = ''.force_encoding('ASCII-8BIT')
       end
 
       def on_connect
@@ -79,12 +79,12 @@ module Fluent
         end
         @buffer.slice!(0, pos) if pos > 0
       rescue => e
-        @log.error "unexpected error", error: e, error_class: e.class
+        @log.error 'unexpected error', error: e, error_class: e.class
         close
       end
 
       def on_close
-        @log.trace { "closed fluent socket object_id=#{self.object_id}" }
+        @log.trace { "closed fluent socket object_id=#{object_id}" }
       end
     end
 
@@ -116,7 +116,7 @@ module Fluent
       end
 
       def shutdown
-        @loop.watchers.each { |w| w.detach }
+        @loop.watchers.each(&:detach)
         @loop.stop
         @handler.close
         @thread.join
@@ -125,14 +125,14 @@ module Fluent
       def run
         @loop.run(@blocking_timeout)
       rescue => e
-        log.error "unexpected error", error: e, error_class: e.class
+        log.error 'unexpected error', error: e, error_class: e.class
         log.error_backtrace
       end
 
       private
 
       def on_message(msg, addr)
-        @parser.parse(msg) { |time, record|
+        @parser.parse(msg) do |time, record|
           unless time && record
             log.warn "pattern not match: #{msg.inspect}"
             return
@@ -140,7 +140,7 @@ module Fluent
 
           record[@source_host_key] = addr[3] if @source_host_key
           router.emit(@tag, time, record)
-        }
+        end
       rescue => e
         log.error msg.dump, error: e, error_class: e.class, host: addr[3]
         log.error_backtrace

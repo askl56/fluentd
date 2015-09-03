@@ -8,7 +8,7 @@ module EventTest
 
     def setup
       @time = Engine.now
-      @record = {'k' => 'v', 'n' => 1}
+      @record = { 'k' => 'v', 'n' => 1 }
       @es = OneEventStream.new(@time, @record)
     end
 
@@ -23,18 +23,18 @@ module EventTest
     end
 
     test 'each' do
-      @es.each { |time, record|
+      @es.each do |time, record|
         assert_equal @time, time
         assert_equal @record, record
-      }
+      end
     end
 
     test 'to_msgpack_stream' do
       stream = @es.to_msgpack_stream
-      MessagePack::Unpacker.new.feed_each(stream) { |time, record|
+      MessagePack::Unpacker.new.feed_each(stream) do |time, record|
         assert_equal @time, time
         assert_equal @record, record
-      }
+      end
     end
   end
 
@@ -43,7 +43,7 @@ module EventTest
 
     def setup
       @times = [Engine.now, Engine.now + 1]
-      @records = [{'k' => 'v1', 'n' => 1}, {'k' => 'v2', 'n' => 2}]
+      @records = [{ 'k' => 'v1', 'n' => 1 }, { 'k' => 'v2', 'n' => 2 }]
       @es = ArrayEventStream.new(@times.zip(@records))
     end
 
@@ -64,21 +64,21 @@ module EventTest
 
     test 'each' do
       i = 0
-      @es.each { |time, record|
+      @es.each do |time, record|
         assert_equal @times[i], time
         assert_equal @records[i], record
         i += 1
-      }
+      end
     end
 
     test 'to_msgpack_stream' do
       i = 0
       stream = @es.to_msgpack_stream
-      MessagePack::Unpacker.new.feed_each(stream) { |time, record|
+      MessagePack::Unpacker.new.feed_each(stream) do |time, record|
         assert_equal @times[i], time
         assert_equal @records[i], record
         i += 1
-      }
+      end
     end
   end
 
@@ -87,11 +87,11 @@ module EventTest
 
     def setup
       @times = [Engine.now, Engine.now + 1]
-      @records = [{'k' => 'v1', 'n' => 1}, {'k' => 'v2', 'n' => 2}]
+      @records = [{ 'k' => 'v1', 'n' => 1 }, { 'k' => 'v2', 'n' => 2 }]
       @es = MultiEventStream.new
-      @times.zip(@records).each { |time, record|
+      @times.zip(@records).each do |time, record|
         @es.add(time, record)
-      }
+      end
     end
 
     test 'repeatable?' do
@@ -111,21 +111,21 @@ module EventTest
 
     test 'each' do
       i = 0
-      @es.each { |time, record|
+      @es.each do |time, record|
         assert_equal @times[i], time
         assert_equal @records[i], record
         i += 1
-      }
+      end
     end
 
     test 'to_msgpack_stream' do
       i = 0
       stream = @es.to_msgpack_stream
-      MessagePack::Unpacker.new.feed_each(stream) { |time, record|
+      MessagePack::Unpacker.new.feed_each(stream) do |time, record|
         assert_equal @times[i], time
         assert_equal @records[i], record
         i += 1
-      }
+      end
     end
   end
 
@@ -135,10 +135,10 @@ module EventTest
     def setup
       pk = MessagePack::Packer.new
       @times = [Engine.now, Engine.now + 1]
-      @records = [{'k' => 'v1', 'n' => 1}, {'k' => 'v2', 'n' => 2}]
-      @times.zip(@records).each { |time, record|
+      @records = [{ 'k' => 'v1', 'n' => 1 }, { 'k' => 'v2', 'n' => 2 }]
+      @times.zip(@records).each do |time, record|
         pk.write([time, record])
-      }
+      end
       @es = MessagePackEventStream.new(pk.to_s)
     end
 
@@ -148,21 +148,21 @@ module EventTest
 
     test 'each' do
       i = 0
-      @es.each { |time, record|
+      @es.each do |time, record|
         assert_equal @times[i], time
         assert_equal @records[i], record
         i += 1
-      }
+      end
     end
 
     test 'to_msgpack_stream' do
       i = 0
       stream = @es.to_msgpack_stream
-      MessagePack::Unpacker.new.feed_each(stream) { |time, record|
+      MessagePack::Unpacker.new.feed_each(stream) do |time, record|
         assert_equal @times[i], time
         assert_equal @records[i], record
         i += 1
-      }
+      end
     end
   end
 end

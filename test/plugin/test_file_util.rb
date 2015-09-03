@@ -8,7 +8,7 @@ class FileUtilTest < Test::Unit::TestCase
     FileUtils.mkdir_p(TEST_DIR)
   end
 
-  TEST_DIR = File.expand_path(File.dirname(__FILE__) + "/../tmp/file_util")
+  TEST_DIR = File.expand_path(File.dirname(__FILE__) + '/../tmp/file_util')
 
   sub_test_case 'writable?' do
     test 'file exists and writable' do

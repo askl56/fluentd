@@ -41,9 +41,9 @@ class EventRouterTest < ::Test::Unit::TestCase
 
   def events(num = DEFAULT_EVENT_NUM)
     es = MultiEventStream.new
-    num.times { |i|
+    num.times do |i|
       es.add(Engine.now, 'key' => "value#{i}")
-    }
+    end
     es
   end
 
@@ -52,38 +52,38 @@ class EventRouterTest < ::Test::Unit::TestCase
       @match_cache = EventRouter::MatchCache.new
     end
 
-    test "call block when non-cached key" do
-      assert_raise(RuntimeError.new('Test!')) {
-        @match_cache.get('test') { raise 'Test!' }
-      }
+    test 'call block when non-cached key' do
+      assert_raise(RuntimeError.new('Test!')) do
+        @match_cache.get('test') { fail 'Test!' }
+      end
     end
 
     test "don't call block when cached key" do
       @match_cache.get('test') { "I'm cached" }
-      assert_nothing_raised {
-        @match_cache.get('test') { raise 'Test!' }
-      }
-      assert_equal "I'm cached", @match_cache.get('test') { raise 'Test!' }
+      assert_nothing_raised do
+        @match_cache.get('test') { fail 'Test!' }
+      end
+      assert_equal "I'm cached", @match_cache.get('test') { fail 'Test!' }
     end
 
-    test "call block when keys are expired" do
+    test 'call block when keys are expired' do
       cache_size = EventRouter::MatchCache::MATCH_CACHE_SIZE
-      cache_size.times { |i|
+      cache_size.times do |i|
         @match_cache.get("test#{i}") { "I'm cached #{i}" }
-      }
-      assert_nothing_raised {
-        cache_size.times { |i|
-          @match_cache.get("test#{i}") { raise "Why called?" }
-        }
-      }
+      end
+      assert_nothing_raised do
+        cache_size.times do |i|
+          @match_cache.get("test#{i}") { fail 'Why called?' }
+        end
+      end
       # expire old keys
-      cache_size.times { |i|
+      cache_size.times do |i|
         @match_cache.get("new_test#{i}") { "I'm young #{i}" }
-      }
+      end
       num_called = 0
-      cache_size.times { |i|
+      cache_size.times do |i|
         @match_cache.get("test#{i}") { num_called += 1 }
-      }
+      end
       assert_equal cache_size, num_called
     end
   end
@@ -119,10 +119,10 @@ class EventRouterTest < ::Test::Unit::TestCase
         @pipeline.emit('test', events, nil)
         assert_equal 1, output.events.size
         assert_equal 5, output.events['test'].size
-        DEFAULT_EVENT_NUM.times { |i|
+        DEFAULT_EVENT_NUM.times do |i|
           assert_equal "value#{i}", output.events['test'][i]['key']
           assert_equal i, output.events['test'][i]['__test__']
-        }
+        end
       end
     end
   end
@@ -144,7 +144,7 @@ class EventRouterTest < ::Test::Unit::TestCase
         end
       end
 
-      test "call default collector when only filter" do
+      test 'call default collector when only filter' do
         event_router.add_rule('test', filter)
         assert_rr do
           # After apply Filter, EventStream becomes MultiEventStream by default
@@ -154,7 +154,7 @@ class EventRouterTest < ::Test::Unit::TestCase
         assert_equal 1, filter.num
       end
 
-      test "call default collector when no matched with output" do
+      test 'call default collector when no matched with output' do
         event_router.add_rule('test', output)
         assert_rr do
           mock(default_collector).emit('dummy', is_a(OneEventStream), NullOutputChain.instance)

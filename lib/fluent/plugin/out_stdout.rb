@@ -27,9 +27,9 @@ module Fluent
     end
 
     def emit(tag, es, chain)
-      es.each {|time,record|
+      es.each do|time, record|
         $log.write "#{Time.at(time).localtime} #{tag}: #{@formatter.format(tag, time, record).chomp}\n"
-      }
+      end
       $log.flush
 
       chain.next

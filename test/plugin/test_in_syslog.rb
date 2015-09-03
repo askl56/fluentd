@@ -8,59 +8,59 @@ class SyslogInputTest < Test::Unit::TestCase
   end
 
   PORT = unused_port
-  CONFIG = %[
+  CONFIG = %(
     port #{PORT}
     bind 127.0.0.1
     tag syslog
-  ]
+  )
 
-  IPv6_CONFIG = %[
+  IPv6_CONFIG = %(
     port #{PORT}
     bind ::1
     tag syslog
-  ]
+  )
 
-  def create_driver(conf=CONFIG)
+  def create_driver(conf = CONFIG)
     Fluent::Test::InputTestDriver.new(Fluent::SyslogInput).configure(conf)
   end
 
   def test_configure
-    configs = {'127.0.0.1' => CONFIG}
+    configs = { '127.0.0.1' => CONFIG }
     configs.merge!('::1' => IPv6_CONFIG) if ipv6_enabled?
 
-    configs.each_pair { |k, v|
+    configs.each_pair do |k, v|
       d = create_driver(v)
       assert_equal PORT, d.instance.port
       assert_equal k, d.instance.bind
-    }
+    end
   end
 
   def test_time_format
-    configs = {'127.0.0.1' => CONFIG}
+    configs = { '127.0.0.1' => CONFIG }
     configs.merge!('::1' => IPv6_CONFIG) if ipv6_enabled?
 
-    configs.each_pair { |k, v|
+    configs.each_pair do |k, v|
       d = create_driver(v)
 
       tests = [
-        {'msg' => '<6>Sep 11 00:00:00 localhost logger: foo', 'expected' => Time.strptime('Sep 11 00:00:00', '%b %d %H:%M:%S').to_i},
-        {'msg' => '<6>Sep  1 00:00:00 localhost logger: foo', 'expected' => Time.strptime('Sep  1 00:00:00', '%b  %d %H:%M:%S').to_i},
+        { 'msg' => '<6>Sep 11 00:00:00 localhost logger: foo', 'expected' => Time.strptime('Sep 11 00:00:00', '%b %d %H:%M:%S').to_i },
+        { 'msg' => '<6>Sep  1 00:00:00 localhost logger: foo', 'expected' => Time.strptime('Sep  1 00:00:00', '%b  %d %H:%M:%S').to_i }
       ]
 
       d.run do
         u = Fluent::SocketUtil.create_udp_socket(k)
         u.connect(k, PORT)
-        tests.each {|test|
+        tests.each do|test|
           u.send(test['msg'], 0)
-        }
+        end
         sleep 1
       end
 
       emits = d.emits
-      emits.each_index {|i|
+      emits.each_index do|i|
         assert_equal(tests[i]['expected'], emits[i][1])
-      }
-    }
+      end
+    end
   end
 
   def test_msg_size
@@ -70,9 +70,9 @@ class SyslogInputTest < Test::Unit::TestCase
     d.run do
       u = UDPSocket.new
       u.connect('127.0.0.1', PORT)
-      tests.each {|test|
+      tests.each do|test|
         u.send(test['msg'], 0)
-      }
+      end
       sleep 1
     end
 
@@ -84,11 +84,11 @@ class SyslogInputTest < Test::Unit::TestCase
     tests = create_test_case
 
     d.run do
-      tests.each {|test|
+      tests.each do|test|
         TCPSocket.open('127.0.0.1', PORT) do |s|
           s.send(test['msg'], 0)
         end
-      }
+      end
       sleep 1
     end
 
@@ -101,9 +101,9 @@ class SyslogInputTest < Test::Unit::TestCase
 
     d.run do
       TCPSocket.open('127.0.0.1', PORT) do |s|
-        tests.each {|test|
+        tests.each do|test|
           s.send(test['msg'], 0)
-        }
+        end
       end
       sleep 1
     end
@@ -114,17 +114,17 @@ class SyslogInputTest < Test::Unit::TestCase
   def test_msg_size_with_json_format
     d = create_driver([CONFIG, 'format json'].join("\n"))
     time = Time.parse('2013-09-18 12:00:00 +0900').to_i
-    tests = ['Hello!', 'Syslog!'].map { |msg|
-      event = {'time' => time, 'message' => msg}
-      {'msg' => '<6>' + event.to_json + "\n", 'expected' => msg}
-    }
+    tests = ['Hello!', 'Syslog!'].map do |msg|
+      event = { 'time' => time, 'message' => msg }
+      { 'msg' => '<6>' + event.to_json + "\n", 'expected' => msg }
+    end
 
     d.run do
       u = UDPSocket.new
       u.connect('127.0.0.1', PORT)
-      tests.each {|test|
+      tests.each do|test|
         u.send(test['msg'], 0)
-      }
+      end
       sleep 1
     end
 
@@ -140,9 +140,9 @@ class SyslogInputTest < Test::Unit::TestCase
       u = UDPSocket.new
       u.connect('127.0.0.1', PORT)
       host = u.peeraddr[2]
-      tests.each {|test|
+      tests.each do|test|
         u.send(test['msg'], 0)
-      }
+      end
       sleep 1
     end
 
@@ -152,16 +152,16 @@ class SyslogInputTest < Test::Unit::TestCase
   def create_test_case
     # actual syslog message has "\n"
     [
-      {'msg' => '<6>Sep 10 00:00:00 localhost logger: ' + 'x' * 100 + "\n", 'expected' => 'x' * 100},
-      {'msg' => '<6>Sep 10 00:00:00 localhost logger: ' + 'x' * 1024 + "\n", 'expected' => 'x' * 1024},
+      { 'msg' => '<6>Sep 10 00:00:00 localhost logger: ' + 'x' * 100 + "\n", 'expected' => 'x' * 100 },
+      { 'msg' => '<6>Sep 10 00:00:00 localhost logger: ' + 'x' * 1024 + "\n", 'expected' => 'x' * 1024 }
     ]
   end
 
   def compare_test_result(emits, tests, host = nil)
-    emits.each_index { |i|
+    emits.each_index do |i|
       assert_equal('syslog.kern.info', emits[0][0]) # <6> means kern.info
       assert_equal(tests[i]['expected'], emits[i][2]['message'])
       assert_equal(host, emits[i][2]['source_host']) if host
-    }
+    end
   end
 end

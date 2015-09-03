@@ -48,25 +48,25 @@ module Fluent
 
       def filtered_as_array
         all = []
-        @filtered.each { |time, record|
+        @filtered.each do |time, record|
           all << [@tag, time, record]
-        }
+        end
         all
       end
       alias_method :emits, :filtered_as_array # emits is for consistent with other drivers
 
       # Almost filters don't use threads so default is 0. It reduces test time.
       def run(num_waits = 0, &block)
-        super(num_waits) {
+        super(num_waits) do
           block.call if block
 
-          @events.each { |tag, es|
+          @events.each do |tag, es|
             processed = @instance.filter_stream(tag, es)
-            processed.each { |time, record|
+            processed.each do |time, record|
               @filtered.add(time, record)
-            }
-          }
-        }
+            end
+          end
+        end
         self
       end
     end

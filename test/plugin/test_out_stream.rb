@@ -9,14 +9,14 @@ module StreamOutputTest
   def test_write
     d = create_driver
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
-    d.emit({"a"=>1}, time)
-    d.emit({"a"=>2}, time)
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
+    d.emit({ 'a' => 1 }, time)
+    d.emit({ 'a' => 2 }, time)
 
-    expect = ["test",
-        [time,{"a"=>1}].to_msgpack +
-        [time,{"a"=>2}].to_msgpack
-      ].to_msgpack
+    expect = ['test',
+              [time, { 'a' => 1 }].to_msgpack +
+              [time, { 'a' => 2 }].to_msgpack
+             ].to_msgpack
 
     result = d.run
     assert_equal(expect, result)
@@ -35,13 +35,13 @@ class TcpOutputTest < Test::Unit::TestCase
   include StreamOutputTest
 
   PORT = unused_port
-  CONFIG = %[
+  CONFIG = %(
     port #{PORT}
     host 127.0.0.1
     send_timeout 51
-  ]
+  )
 
-  def create_driver(conf=CONFIG)
+  def create_driver(conf = CONFIG)
     super(Fluent::TcpOutput, conf)
   end
 
@@ -57,12 +57,12 @@ class UnixOutputTest < Test::Unit::TestCase
   include StreamOutputTest
 
   TMP_DIR = File.dirname(__FILE__) + "/../tmp/out_unix#{ENV['TEST_ENV_NUMBER']}"
-  CONFIG = %[
+  CONFIG = %(
     path #{TMP_DIR}/unix
     send_timeout 52
-  ]
+  )
 
-  def create_driver(conf=CONFIG)
+  def create_driver(conf = CONFIG)
     super(Fluent::UnixOutput, conf)
   end
 
@@ -72,4 +72,3 @@ class UnixOutputTest < Test::Unit::TestCase
     assert_equal 52, d.instance.send_timeout
   end
 end
-

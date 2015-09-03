@@ -16,7 +16,7 @@
 
 module Fluent
   class OutputChain
-    def initialize(array, tag, es, chain=NullOutputChain.instance)
+    def initialize(array, tag, es, chain = NullOutputChain.instance)
       @array = array
       @tag = tag
       @es = es
@@ -25,23 +25,19 @@ module Fluent
     end
 
     def next
-      if @array.length <= @offset
-        return @chain.next
-      end
+      return @chain.next if @array.length <= @offset
       @offset += 1
-      result = @array[@offset-1].emit(@tag, @es, self)
+      result = @array[@offset - 1].emit(@tag, @es, self)
       result
     end
   end
 
   class CopyOutputChain < OutputChain
     def next
-      if @array.length <= @offset
-        return @chain.next
-      end
+      return @chain.next if @array.length <= @offset
       @offset += 1
       es = @array.length > @offset ? @es.dup : @es
-      result = @array[@offset-1].emit(@tag, es, self)
+      result = @array[@offset - 1].emit(@tag, es, self)
       result
     end
   end
@@ -53,7 +49,6 @@ module Fluent
     def next
     end
   end
-
 
   class Output
     include Configurable
@@ -83,16 +78,15 @@ module Fluent
     def shutdown
     end
 
-    #def emit(tag, es, chain)
-    #end
+    # def emit(tag, es, chain)
+    # end
 
     def secondary_init(primary)
       if primary.class != self.class
-        $log.warn "type of secondary output should be same as primary output", primary:primary.class.to_s, secondary:self.class.to_s
+        $log.warn 'type of secondary output should be same as primary output', primary: primary.class.to_s, secondary: self.class.to_s
       end
     end
   end
-
 
   class OutputThread
     def initialize(output)
@@ -101,7 +95,7 @@ module Fluent
       @next_time = Time.now.to_f + 1.0
     end
 
-    def configure(conf)
+    def configure(_conf)
     end
 
     def start
@@ -112,22 +106,23 @@ module Fluent
 
     def shutdown
       @finish = true
-      @mutex.synchronize {
+      @mutex.synchronize do
         @cond.signal
-      }
+      end
       Thread.pass
       @thread.join
     end
 
     def submit_flush
-      @mutex.synchronize {
+      @mutex.synchronize do
         @next_time = 0
         @cond.signal
-      }
+      end
       Thread.pass
     end
 
     private
+
     def run
       @mutex.lock
       begin
@@ -152,20 +147,19 @@ module Fluent
         @mutex.unlock
       end
     rescue
-      $log.error "error on output thread", error:$!.to_s
+      $log.error 'error on output thread', error: $ERROR_INFO.to_s
       $log.error_backtrace
       raise
     ensure
-      @mutex.synchronize {
+      @mutex.synchronize do
         @output.before_shutdown
-      }
+      end
     end
 
     def cond_wait(sec)
       @cond.wait(@mutex, sec)
     end
   end
-
 
   class BufferedOutput < Output
     def initialize
@@ -204,13 +198,13 @@ module Fluent
         end
       end
 
-      @writers = (1..@num_threads).map {
+      @writers = (1..@num_threads).map do
         writer = OutputThread.new(self)
         writer.configure(conf)
         writer
-      }
+      end
 
-      if sconf = conf.elements.select {|e| e.name == 'secondary' }.first
+      if sconf = conf.elements.find { |e| e.name == 'secondary' }
         type = sconf['@type'] || conf['@type'] || sconf['type'] || conf['type']
         @secondary = Plugin.new_output(type)
         @secondary.router = router
@@ -219,38 +213,36 @@ module Fluent
         if secondary_limit = conf['secondary_limit']
           @secondary_limit = secondary_limit.to_i
           if @secondary_limit < 0
-            raise ConfigError, "invalid parameter 'secondary_limit #{secondary_limit}'"
+            fail ConfigError, "invalid parameter 'secondary_limit #{secondary_limit}'"
           end
         end
 
         @secondary.secondary_init(self)
       end
 
-      Status.register(self, "queue_size") { @buffer.queue_size }
-      Status.register(self, "emit_count") { @emit_count }
+      Status.register(self, 'queue_size') { @buffer.queue_size }
+      Status.register(self, 'emit_count') { @emit_count }
     end
 
     def start
       @next_flush_time = Time.now.to_f + @flush_interval
       @buffer.start
       @secondary.start if @secondary
-      @writers.each {|writer| writer.start }
+      @writers.each(&:start)
       @writer_current_position = 0
       @writers_size = @writers.size
     end
 
     def shutdown
-      @writers.each {|writer| writer.shutdown }
+      @writers.each(&:shutdown)
       @secondary.shutdown if @secondary
       @buffer.shutdown
     end
 
-    def emit(tag, es, chain, key="")
+    def emit(tag, es, chain, key = '')
       @emit_count += 1
       data = format_stream(tag, es)
-      if @buffer.emit(key, data, chain)
-        submit_flush
-      end
+      submit_flush if @buffer.emit(key, data, chain)
     end
 
     def submit_flush
@@ -261,22 +253,22 @@ module Fluent
 
     def format_stream(tag, es)
       out = ''
-      es.each {|time,record|
+      es.each do|time, record|
         out << format(tag, time, record)
-      }
+      end
       out
     end
 
-    #def format(tag, time, record)
-    #end
+    # def format(tag, time, record)
+    # end
 
-    #def write(chunk)
-    #end
+    # def write(chunk)
+    # end
 
-    def enqueue_buffer(force = false)
-      @buffer.keys.each {|key|
+    def enqueue_buffer(_force = false)
+      @buffer.keys.each do|key|
         @buffer.push(key)
-      }
+      end
     end
 
     def try_flush
@@ -292,9 +284,7 @@ module Fluent
           end
         end
       end
-      if empty
-        return time + @try_flush_interval
-      end
+      return time + @try_flush_interval if empty
 
       begin
         retrying = !@num_errors.zero?
@@ -326,7 +316,7 @@ module Fluent
           @num_errors = 0
           # Note: don't notify to other threads to prevent
           #       burst to recovered server
-          $log.warn "retry succeeded.", plugin_id:plugin_id
+          $log.warn 'retry succeeded.', plugin_id: plugin_id
         end
 
         if has_next
@@ -351,29 +341,29 @@ module Fluent
         end
 
         if @disable_retry_limit || error_count < @retry_limit
-          $log.warn "temporarily failed to flush the buffer.", next_retry:Time.at(@next_retry_time), error_class:e.class.to_s, error:e.to_s, plugin_id:plugin_id
+          $log.warn 'temporarily failed to flush the buffer.', next_retry: Time.at(@next_retry_time), error_class: e.class.to_s, error: e.to_s, plugin_id: plugin_id
           $log.warn_backtrace e.backtrace
 
         elsif @secondary
           if error_count == @retry_limit
-            $log.warn "failed to flush the buffer.", error_class:e.class.to_s, error:e.to_s, plugin_id:plugin_id
-            $log.warn "retry count exceededs limit. falling back to secondary output."
+            $log.warn 'failed to flush the buffer.', error_class: e.class.to_s, error: e.to_s, plugin_id: plugin_id
+            $log.warn 'retry count exceededs limit. falling back to secondary output.'
             $log.warn_backtrace e.backtrace
-            retry  # retry immediately
+            retry # retry immediately
           elsif error_count <= @retry_limit + @secondary_limit
-            $log.warn "failed to flush the buffer, next retry will be with secondary output.", next_retry:Time.at(@next_retry_time), error_class:e.class.to_s, error:e.to_s, plugin_id:plugin_id
+            $log.warn 'failed to flush the buffer, next retry will be with secondary output.', next_retry: Time.at(@next_retry_time), error_class: e.class.to_s, error: e.to_s, plugin_id: plugin_id
             $log.warn_backtrace e.backtrace
           else
-            $log.warn "failed to flush the buffer.", error_class:e.class, error:e.to_s, plugin_id:plugin_id
-            $log.warn "secondary retry count exceededs limit."
+            $log.warn 'failed to flush the buffer.', error_class: e.class, error: e.to_s, plugin_id: plugin_id
+            $log.warn 'secondary retry count exceededs limit.'
             $log.warn_backtrace e.backtrace
             write_abort
             @num_errors = 0
           end
 
         else
-          $log.warn "failed to flush the buffer.", error_class:e.class.to_s, error:e.to_s, plugin_id:plugin_id
-          $log.warn "retry count exceededs limit."
+          $log.warn 'failed to flush the buffer.', error_class: e.class.to_s, error: e.to_s, plugin_id: plugin_id
+          $log.warn 'retry count exceededs limit.'
           $log.warn_backtrace e.backtrace
           write_abort
           @num_errors = 0
@@ -392,32 +382,30 @@ module Fluent
     end
 
     def before_shutdown
-      begin
-        @buffer.before_shutdown(self)
-      rescue
-        $log.warn "before_shutdown failed", error:$!.to_s
-        $log.warn_backtrace
-      end
+      @buffer.before_shutdown(self)
+    rescue
+      $log.warn 'before_shutdown failed', error: $ERROR_INFO.to_s
+      $log.warn_backtrace
     end
 
     def calc_retry_wait
-      # TODO retry pattern
+      # TODO: retry pattern
       wait = if @disable_retry_limit || @num_errors <= @retry_limit
-               @retry_wait * (2 ** (@num_errors - 1))
+               @retry_wait * (2**(@num_errors - 1))
              else
                # secondary retry
-               @retry_wait * (2 ** (@num_errors - 2 - @retry_limit))
+               @retry_wait * (2**(@num_errors - 2 - @retry_limit))
              end
       retry_wait = wait.finite? ? wait + (rand * (wait / 4.0) - (wait / 8.0)) : wait
       @max_retry_wait ? [retry_wait, @max_retry_wait].min : retry_wait
     end
 
     def write_abort
-      $log.error "throwing away old logs."
+      $log.error 'throwing away old logs.'
       begin
         @buffer.clear!
       rescue
-        $log.error "unexpected error while aborting", error:$!.to_s
+        $log.error 'unexpected error while aborting', error: $ERROR_INFO.to_s
         $log.error_backtrace
       end
     end
@@ -426,7 +414,6 @@ module Fluent
       @buffer.pop(secondary)
     end
   end
-
 
   class ObjectBufferedOutput < BufferedOutput
     def initialize
@@ -437,9 +424,7 @@ module Fluent
       @emit_count += 1
       data = es.to_msgpack_stream
       key = tag
-      if @buffer.emit(key, data, chain)
-        submit_flush
-      end
+      submit_flush if @buffer.emit(key, data, chain)
     end
 
     module BufferedEventStreamMixin
@@ -464,21 +449,20 @@ module Fluent
     end
   end
 
-
   class TimeSlicedOutput < BufferedOutput
     require 'fluent/timezone'
 
     def initialize
       super
       @localtime = true
-      #@ignore_old = false   # TODO
+      # @ignore_old = false   # TODO
     end
 
     config_param :time_slice_format, :string, default: '%Y%m%d'
-    config_param :time_slice_wait, :time, default: 10*60
+    config_param :time_slice_wait, :time, default: 10 * 60
     config_param :timezone, :string, default: nil
-    config_set_default :buffer_type, 'file'  # overwrite default buffer_type
-    config_set_default :buffer_chunk_limit, 256*1024*1024  # overwrite default buffer_chunk_limit
+    config_set_default :buffer_type, 'file' # overwrite default buffer_type
+    config_set_default :buffer_chunk_limit, 256 * 1024 * 1024 # overwrite default buffer_chunk_limit
     config_set_default :flush_interval, nil
 
     attr_accessor :localtime
@@ -501,13 +485,13 @@ module Fluent
       if @timezone
         @time_slicer = Timezone.formatter(@timezone, @time_slice_format)
       elsif @localtime
-        @time_slicer = Proc.new {|time|
+        @time_slicer = proc do|time|
           Time.at(time).strftime(@time_slice_format)
-        }
+        end
       else
-        @time_slicer = Proc.new {|time|
+        @time_slicer = proc do|time|
           Time.at(time).utc.strftime(@time_slice_format)
-        }
+        end
       end
 
       @time_slice_cache_interval = time_slice_cache_interval
@@ -518,21 +502,19 @@ module Fluent
         if conf['time_slice_wait']
           $log.warn "time_slice_wait is ignored if flush_interval is specified: #{conf}"
         end
-        @enqueue_buffer_proc = Proc.new do
-          @buffer.keys.each {|key|
+        @enqueue_buffer_proc = proc do
+          @buffer.keys.each do|key|
             @buffer.push(key)
-          }
+          end
         end
 
       else
         @flush_interval = [60, @time_slice_cache_interval].min
-        @enqueue_buffer_proc = Proc.new do
+        @enqueue_buffer_proc = proc do
           nowslice = @time_slicer.call(Engine.now - @time_slice_wait)
-          @buffer.keys.each {|key|
-            if key < nowslice
-              @buffer.push(key)
-            end
-          }
+          @buffer.keys.each do|key|
+            @buffer.push(key) if key < nowslice
+          end
         end
       end
     end
@@ -540,7 +522,7 @@ module Fluent
     def emit(tag, es, chain)
       @emit_count += 1
       formatted_data = {}
-      es.each {|time,record|
+      es.each do|time, record|
         tc = time / @time_slice_cache_interval
         if @before_tc == tc
           key = @before_key
@@ -551,45 +533,42 @@ module Fluent
         end
         formatted_data[key] ||= ''
         formatted_data[key] << format(tag, time, record)
-      }
-      formatted_data.each { |key, data|
-        if @buffer.emit(key, data, chain)
-          submit_flush
-        end
-      }
+      end
+      formatted_data.each do |key, data|
+        submit_flush if @buffer.emit(key, data, chain)
+      end
     end
 
     def enqueue_buffer(force = false)
       if force
-        @buffer.keys.each {|key|
+        @buffer.keys.each do|key|
           @buffer.push(key)
-        }
+        end
       else
         @enqueue_buffer_proc.call
       end
     end
 
-    #def format(tag, event)
-    #end
+    # def format(tag, event)
+    # end
 
     private
+
     def time_slice_cache_interval
-      if @time_slicer.call(0) != @time_slicer.call(60-1)
+      if @time_slicer.call(0) != @time_slicer.call(60 - 1)
         return 1
-      elsif @time_slicer.call(0) != @time_slicer.call(60*60-1)
+      elsif @time_slicer.call(0) != @time_slicer.call(60 * 60 - 1)
         return 30
-      elsif @time_slicer.call(0) != @time_slicer.call(24*60*60-1)
-        return 60*30
+      elsif @time_slicer.call(0) != @time_slicer.call(24 * 60 * 60 - 1)
+        return 60 * 30
       else
-        return 24*60*30
+        return 24 * 60 * 30
       end
     end
   end
 
-
   class MultiOutput < Output
-    #def outputs
-    #end
+    # def outputs
+    # end
   end
 end
-

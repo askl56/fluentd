@@ -27,13 +27,13 @@ module Fluent
     SUPPORTED_FORMAT = {
       'tsv' => :tsv,
       'json' => :json,
-      'msgpack' => :msgpack,
+      'msgpack' => :msgpack
     }
 
     config_param :command, :string
     config_param :format, default: :tsv do |val|
       f = SUPPORTED_FORMAT[val]
-      raise ConfigError, "Unsupported format '#{val}'" unless f
+      fail ConfigError, "Unsupported format '#{val}'" unless f
       f
     end
     config_param :keys, default: [] do |val|
@@ -60,22 +60,22 @@ module Fluent
       end
 
       if !@tag && !@tag_key
-        raise ConfigError, "'tag' or 'tag_key' option is required on exec input"
+        fail ConfigError, "'tag' or 'tag_key' option is required on exec input"
       end
 
       if @time_key
         if @time_format
           f = @time_format
-          @time_parse_proc = Proc.new {|str| Time.strptime(str, f).to_i }
+          @time_parse_proc = proc { |str| Time.strptime(str, f).to_i }
         else
-          @time_parse_proc = Proc.new {|str| str.to_i }
+          @time_parse_proc = proc { |str| str.to_i }
         end
       end
 
       case @format
       when :tsv
         if @keys.empty?
-          raise ConfigError, "keys option is required on exec input for tsv format"
+          fail ConfigError, 'keys option is required on exec input for tsv format'
         end
         @parser = ExecUtil::TSVParser.new(@keys, method(:on_message))
       when :json
@@ -90,7 +90,7 @@ module Fluent
         @finished = false
         @thread = Thread.new(&method(:run_periodic))
       else
-        @io = IO.popen(@command, "r")
+        @io = IO.popen(@command, 'r')
         @pid = @io.pid
         @thread = Thread.new(&method(:run))
       end
@@ -103,15 +103,13 @@ module Fluent
       else
         begin
           Process.kill(:TERM, @pid)
-        rescue #Errno::ECHILD, Errno::ESRCH, Errno::EPERM
+        rescue # Errno::ECHILD, Errno::ESRCH, Errno::EPERM
         end
-        if @thread.join(60)  # TODO wait time
-          return
-        end
+        return if @thread.join(60) # TODO: wait time
 
         begin
           Process.kill(:KILL, @pid)
-        rescue #Errno::ECHILD, Errno::ESRCH, Errno::EPERM
+        rescue # Errno::ECHILD, Errno::ESRCH, Errno::EPERM
         end
         @thread.join
       end
@@ -125,12 +123,12 @@ module Fluent
       until @finished
         begin
           sleep @run_interval
-          io = IO.popen(@command, "r")
+          io = IO.popen(@command, 'r')
           @parser.call(io)
           Process.waitpid(io.pid)
         rescue
-          log.error "exec failed to run or shutdown child process", error: $!.to_s, error_class: $!.class.to_s
-          log.warn_backtrace $!.backtrace
+          log.error 'exec failed to run or shutdown child process', error: $ERROR_INFO.to_s, error_class: $ERROR_INFO.class.to_s
+          log.warn_backtrace $ERROR_INFO.backtrace
         end
       end
     end
@@ -152,7 +150,7 @@ module Fluent
 
       router.emit(tag, time, record)
     rescue => e
-      log.error "exec failed to emit", error: e.to_s, error_class: e.class.to_s, tag: tag, record: Yajl.dump(record)
+      log.error 'exec failed to emit', error: e.to_s, error_class: e.class.to_s, tag: tag, record: Yajl.dump(record)
     end
   end
 end

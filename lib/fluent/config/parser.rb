@@ -37,7 +37,7 @@ module Fluent
           line.force_encoding('UTF-8')
           @i += 1
           line.lstrip!
-          line.gsub!(/\s*(?:\#.*)?$/,'')
+          line.gsub!(/\s*(?:\#.*)?$/, '')
           if line.empty?
             next
           elsif m = /^\<include\s*(.*)\s*\/\>$/.match(line)
@@ -45,7 +45,7 @@ module Fluent
             process_include(attrs, elems, value, allow_include)
           elsif m = /^\<([a-zA-Z0-9_]+)\s*(.+?)?\>$/.match(line)
             e_name = m[1]
-            e_arg = m[2] || ""
+            e_arg = m[2] || ''
             e_attrs, e_elems = parse!(false, e_name)
             elems << Element.new(e_name, e_arg, e_attrs, e_elems)
           elsif line == "</#{elem_name}>"
@@ -60,7 +60,7 @@ module Fluent
             end
             next
           else
-            raise ConfigParseError, "parse error at #{@fname} line #{@i}"
+            fail ConfigParseError, "parse error at #{@fname} line #{@i}"
           end
         end
 
@@ -71,35 +71,34 @@ module Fluent
 
       def process_include(attrs, elems, uri, allow_include = true)
         u = URI.parse(uri)
-        if u.scheme == 'file' || u.path == uri  # file path
+        if u.scheme == 'file' || u.path == uri # file path
           path = u.path
-          if path[0] != ?/
+          if path[0] != '/'
             pattern = File.expand_path("#{@basepath}/#{path}")
           else
             pattern = path
           end
 
-          Dir.glob(pattern).sort.each { |path|
+          Dir.glob(pattern).sort.each do |path|
             basepath = File.dirname(path)
             fname = File.basename(path)
-            File.open(path) { |f|
+            File.open(path) do |f|
               Parser.new(basepath, f.each_line, fname).parse!(allow_include, nil, attrs, elems)
-            }
-          }
+            end
+          end
 
         else
           basepath = '/'
           fname = path
           require 'open-uri'
-          open(uri) {|f|
+          open(uri) do|f|
             Parser.new(basepath, f.each_line, fname).parse!(allow_include, nil, attrs, elems)
-          }
+          end
         end
 
       rescue SystemCallError => e
-        raise ConfigParseError, "include error at #{@fname} line #{@i}: #{e.to_s}"
+        raise ConfigParseError, "include error at #{@fname} line #{@i}: #{e}"
       end
     end
   end
 end
-

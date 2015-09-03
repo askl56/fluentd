@@ -20,12 +20,12 @@ module Fluent
       Fluent.__send__(:remove_const, :Engine)
       engine = Fluent.const_set(:Engine, EngineClass.new).init
 
-      engine.define_singleton_method(:now=) {|n|
+      engine.define_singleton_method(:now=) do|n|
         @now = n.to_i
-      }
-      engine.define_singleton_method(:now) {
+      end
+      engine.define_singleton_method(:now) do
         @now || super()
-      }
+      end
 
       nil
     end
@@ -57,7 +57,7 @@ module Fluent
         if str.is_a?(Fluent::Config::Element)
           @config = str
         else
-          @config = Config.parse(str, "(test)", "(test_dir)", use_v1)
+          @config = Config.parse(str, '(test)', '(test_dir)', use_v1)
         end
         if label_name = @config['@label']
           Engine.root_agent.add_label(label_name)
@@ -67,7 +67,7 @@ module Fluent
       end
 
       # num_waits is for checking thread status. This will be removed after improved plugin API
-      def run(num_waits = 10, &block)
+      def run(num_waits = 10, &_block)
         @instance.start
         begin
           # wait until thread starts
@@ -91,7 +91,7 @@ module Fluent
       end
 
       def puts(*args)
-        args.each{ |arg| write(arg + "\n") }
+        args.each { |arg| write(arg + "\n") }
       end
 
       def write(message)

@@ -35,7 +35,7 @@ module Fluent
     config_param :time_format, :string, default: nil
     config_param :format, default: :tsv do |val|
       f = ExecUtil::SUPPORTED_FORMAT[val]
-      raise ConfigError, "Unsupported format '#{val}'" unless f
+      fail ConfigError, "Unsupported format '#{val}'" unless f
       f
     end
 
@@ -45,7 +45,7 @@ module Fluent
       @formatter = case @format
                    when :tsv
                      if @keys.empty?
-                       raise ConfigError, "keys option is required on exec output for tsv format"
+                       fail ConfigError, 'keys option is required on exec output for tsv format'
                      end
                      ExecUtil::TSVFormatter.new(@keys)
                    when :json
@@ -59,19 +59,15 @@ module Fluent
           tf = TimeFormatter.new(@time_format, @localtime, @timezone)
           @time_format_proc = tf.method(:format)
         else
-          @time_format_proc = Proc.new { |time| time.to_s }
+          @time_format_proc = proc { |time| time.to_s }
         end
       end
     end
 
     def format(tag, time, record)
       out = ''
-      if @time_key
-        record[@time_key] = @time_format_proc.call(time)
-      end
-      if @tag_key
-        record[@tag_key] = tag
-      end
+      record[@time_key] = @time_format_proc.call(time) if @time_key
+      record[@tag_key] = tag if @tag_key
       @formatter.call(record, out)
       out
     end
@@ -80,19 +76,17 @@ module Fluent
       if chunk.respond_to?(:path)
         prog = "#{@command} #{chunk.path}"
       else
-        tmpfile = Tempfile.new("fluent-plugin-exec-")
+        tmpfile = Tempfile.new('fluent-plugin-exec-')
         chunk.write_to(tmpfile)
         tmpfile.close
         prog = "#{@command} #{tmpfile.path}"
       end
 
       system(prog)
-      ecode = $?.to_i
+      ecode = $CHILD_STATUS.to_i
       tmpfile.delete if tmpfile
 
-      if ecode != 0
-        raise "command returns #{ecode}: #{prog}"
-      end
+      fail "command returns #{ecode}: #{prog}" if ecode != 0
     end
   end
 end

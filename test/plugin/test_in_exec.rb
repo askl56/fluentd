@@ -5,7 +5,7 @@ require 'net/http'
 class ExecInputTest < Test::Unit::TestCase
   def setup
     Fluent::Test.setup
-    @test_time = Time.parse("2011-01-02 13:14:15").to_i
+    @test_time = Time.parse('2011-01-02 13:14:15').to_i
     @script = File.expand_path(File.join(File.dirname(__FILE__), '..', 'scripts', 'exec_script.rb'))
   end
 
@@ -14,43 +14,43 @@ class ExecInputTest < Test::Unit::TestCase
   end
 
   def tsv_config
-    %[
+    %(
       command ruby #{@script} "2011-01-02 13:14:15" 0
       keys time,tag,k1
       time_key time
       tag_key tag
       time_format %Y-%m-%d %H:%M:%S
       run_interval 1s
-    ]
+    )
   end
 
   def json_config
-    %[
+    %(
       command ruby #{@script} #{@test_time} 1
       format json
       tag_key tag
       time_key time
       run_interval 1s
-    ]
+    )
   end
 
   def msgpack_config
-    %[
+    %(
       command ruby #{@script} #{@test_time} 2
       format msgpack
       tag_key tagger
       time_key datetime
       run_interval 1s
-    ]
+    )
   end
 
   def test_configure
     d = create_driver
     assert_equal :tsv, d.instance.format
-    assert_equal ["time","tag","k1"], d.instance.keys
-    assert_equal "tag", d.instance.tag_key
-    assert_equal "time", d.instance.time_key
-    assert_equal "%Y-%m-%d %H:%M:%S", d.instance.time_format
+    assert_equal %w(time tag k1), d.instance.keys
+    assert_equal 'tag', d.instance.tag_key
+    assert_equal 'time', d.instance.time_key
+    assert_equal '%Y-%m-%d %H:%M:%S', d.instance.time_format
   end
 
   def test_configure_with_json
@@ -76,7 +76,7 @@ class ExecInputTest < Test::Unit::TestCase
 
     emits = d.emits
     assert_equal true, emits.length > 0
-    assert_equal ["tag1", @test_time, {"k1"=>"ok"}], emits[0]
+    assert_equal ['tag1', @test_time, { 'k1' => 'ok' }], emits[0]
   end
 
   def test_emit_json
@@ -88,7 +88,7 @@ class ExecInputTest < Test::Unit::TestCase
 
     emits = d.emits
     assert_equal true, emits.length > 0
-    assert_equal ["tag1", @test_time, {"k1"=>"ok"}], emits[0]
+    assert_equal ['tag1', @test_time, { 'k1' => 'ok' }], emits[0]
   end
 
   def test_emit_msgpack
@@ -100,6 +100,6 @@ class ExecInputTest < Test::Unit::TestCase
 
     emits = d.emits
     assert_equal true, emits.length > 0
-    assert_equal ["tag1", @test_time, {"k1"=>"ok"}], emits[0]
+    assert_equal ['tag1', @test_time, { 'k1' => 'ok' }], emits[0]
   end
 end

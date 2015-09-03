@@ -26,7 +26,7 @@ module Fluent
           parse(data, path)
         end
 
-        def self.parse(source, source_path="config.rb")
+        def self.parse(source, source_path = 'config.rb')
           Proxy.new('ROOT', nil).eval(source, source_path).to_config_element
         end
       end
@@ -36,9 +36,7 @@ module Fluent
           @element = Element.new(name, arg, self)
         end
 
-        def element
-          @element
-        end
+        attr_reader :element
 
         def eval(source, source_path)
           @element.instance_eval(source, source_path)
@@ -75,7 +73,7 @@ module Fluent
         end
 
         def method_missing(name, *args, &block)
-          ::Kernel.raise ::ArgumentError, "Configuration DSL Syntax Error: only one argument allowed" if args.size > 1
+          ::Kernel.raise ::ArgumentError, 'Configuration DSL Syntax Error: only one argument allowed' if args.size > 1
           value = args.first
 
           if block
@@ -106,7 +104,7 @@ module Fluent
           return ::Kernel.const_get(name) if ::Kernel.const_defined?(name)
 
           if name.to_s =~ /^Fluent::Config::DSL::Element::(.*)$/
-            name = "#{$1}".to_sym
+            name = "#{Regexp.last_match(1)}".to_sym
             return ::Kernel.const_get(name) if ::Kernel.const_defined?(name)
           end
           ::Kernel.eval("#{name}")

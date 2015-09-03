@@ -19,7 +19,7 @@ module Fluent
     SUPPORTED_FORMAT = {
       'tsv' => :tsv,
       'json' => :json,
-      'msgpack' => :msgpack,
+      'msgpack' => :msgpack
     }
 
     class Parser
@@ -76,7 +76,7 @@ module Fluent
       end
 
       def call(record, out)
-        last = @in_keys.length-1
+        last = @in_keys.length - 1
         for i in 0..last
           key = @in_keys[i]
           out << record[key].to_s

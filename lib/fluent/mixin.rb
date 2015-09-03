@@ -25,31 +25,31 @@ module Fluent
       @tc2_str = nil
 
       if formatter = Fluent::Timezone.formatter(timezone, format)
-        define_singleton_method(:format_nocache) {|time|
+        define_singleton_method(:format_nocache) do|time|
           formatter.call(time)
-        }
+        end
         return
       end
 
       if format
         if localtime
-          define_singleton_method(:format_nocache) {|time|
+          define_singleton_method(:format_nocache) do|time|
             Time.at(time).strftime(format)
-          }
+          end
         else
-          define_singleton_method(:format_nocache) {|time|
+          define_singleton_method(:format_nocache) do|time|
             Time.at(time).utc.strftime(format)
-          }
+          end
         end
       else
         if localtime
-          define_singleton_method(:format_nocache) {|time|
+          define_singleton_method(:format_nocache) do|time|
             Time.at(time).iso8601
-          }
+          end
         else
-          define_singleton_method(:format_nocache) {|time|
+          define_singleton_method(:format_nocache) do|time|
             Time.at(time).utc.iso8601
-          }
+          end
         end
       end
     end
@@ -72,23 +72,22 @@ module Fluent
       end
     end
 
-    def format_nocache(time)
+    def format_nocache(_time)
       # will be overridden in initialize
     end
   end
 
-
   module RecordFilterMixin
-    def filter_record(tag, time, record)
+    def filter_record(_tag, _time, _record)
     end
 
     def format_stream(tag, es)
       out = ''
-      es.each {|time,record|
+      es.each do|time, record|
         tag_temp = tag.dup
         filter_record(tag_temp, time, record)
         out << format(tag_temp, time, record)
-      }
+      end
       out
     end
   end
@@ -133,7 +132,7 @@ module Fluent
 
       if s = conf['include_time_key']
         include_time_key = Config.bool_value(s)
-        raise ConfigError, "Invalid boolean expression '#{s}' for include_time_key parameter" if include_time_key.nil?
+        fail ConfigError, "Invalid boolean expression '#{s}' for include_time_key parameter" if include_time_key.nil?
 
         @include_time_key = include_time_key
       end
@@ -142,7 +141,7 @@ module Fluent
         @time_key     = conf['time_key'] || 'time'
         @time_format  = conf['time_format']
 
-        if    conf['localtime']
+        if conf['localtime']
           @localtime = true
         elsif conf['utc']
           @localtime = false
@@ -176,7 +175,7 @@ module Fluent
 
       if s = conf['include_tag_key']
         include_tag_key = Config.bool_value(s)
-        raise ConfigError, "Invalid boolean expression '#{s}' for include_tag_key parameter" if include_tag_key.nil?
+        fail ConfigError, "Invalid boolean expression '#{s}' for include_tag_key parameter" if include_tag_key.nil?
 
         @include_tag_key = include_tag_key
       end

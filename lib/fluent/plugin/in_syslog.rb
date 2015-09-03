@@ -74,7 +74,7 @@ module Fluent
       when 'udp'
         :udp
       else
-        raise ConfigError, "syslog input protocol type should be 'tcp' or 'udp'"
+        fail ConfigError, "syslog input protocol type should be 'tcp' or 'udp'"
       end
     end
     config_param :include_source_host, :bool, default: false
@@ -84,7 +84,7 @@ module Fluent
     def configure(conf)
       super
 
-      if conf.has_key?('format')
+      if conf.key?('format')
         @parser = Plugin.new_parser(conf['format'])
         @parser.configure(conf)
       else
@@ -110,7 +110,7 @@ module Fluent
     end
 
     def shutdown
-      @loop.watchers.each {|w| w.detach }
+      @loop.watchers.each(&:detach)
       @loop.stop
       @handler.close
       @thread.join
@@ -119,7 +119,7 @@ module Fluent
     def run
       @loop.run(@blocking_timeout)
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
@@ -134,7 +134,7 @@ module Fluent
       pri = m[1].to_i
       text = m[2]
 
-      @parser.parse(text) { |time, record|
+      @parser.parse(text) do |time, record|
         unless time && record
           log.warn "pattern not match: #{text.inspect}"
           return
@@ -142,23 +142,23 @@ module Fluent
 
         record[@source_host_key] = addr[2] if @include_source_host
         emit(pri, time, record)
-      }
+      end
     rescue => e
       log.error data.dump, error: e.to_s
       log.error_backtrace
     end
 
     def receive_data(data, addr)
-      @parser.parse(data) { |time, record|
+      @parser.parse(data) do |time, record|
         unless time && record
-          log.warn "invalid syslog message", data: data
+          log.warn 'invalid syslog message', data: data
           return
         end
 
         pri = record.delete('pri')
         record[@source_host_key] = addr[2] if @include_source_host
         emit(pri, time, record)
-      }
+      end
     rescue => e
       log.error data.dump, error: e.to_s
       log.error_backtrace
@@ -186,7 +186,7 @@ module Fluent
 
       router.emit(tag, time, record)
     rescue => e
-      log.error "syslog failed to emit", error: e.to_s, error_class: e.class.to_s, tag: tag, record: Yajl.dump(record)
+      log.error 'syslog failed to emit', error: e.to_s, error_class: e.class.to_s, tag: tag, record: Yajl.dump(record)
     end
   end
 end

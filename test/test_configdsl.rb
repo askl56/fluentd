@@ -38,23 +38,23 @@ match('test.**') {
 }
 ]
 
-  TEST_DSL_CONFIG2 = %q[
+  TEST_DSL_CONFIG2 = '
 v = [0, 1, 2]
-]
+'
 
-  TEST_DSL_CONFIG3 = %q[
+  TEST_DSL_CONFIG3 = '
 match
-]
+'
 
-  TEST_DSL_CONFIG4 = %q[
+  TEST_DSL_CONFIG4 = "
 match('aa', 'bb'){
   type :null
 }
-]
+"
 
-  TEST_DSL_CONFIG5 = %q[
+  TEST_DSL_CONFIG5 = "
 match('aa')
-]
+"
 
   def test_parse
     root = Fluent::Config::DSL::Parser.parse(TEST_DSL_CONFIG1)
@@ -92,17 +92,17 @@ match('aa')
   end
 
   def test_config_error
-    assert_raise(ArgumentError) {
+    assert_raise(ArgumentError) do
       Fluent::Config::DSL::Parser.parse(TEST_DSL_CONFIG3)
-    }
+    end
 
-    assert_raise(ArgumentError) {
+    assert_raise(ArgumentError) do
       Fluent::Config::DSL::Parser.parse(TEST_DSL_CONFIG4)
-    }
+    end
 
-    assert_raise(ArgumentError) {
+    assert_raise(ArgumentError) do
       Fluent::Config::DSL::Parser.parse(TEST_DSL_CONFIG5)
-    }
+    end
   end
 
   def test_with_ruby_keyword

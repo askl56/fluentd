@@ -40,34 +40,34 @@ module Fluent
       if value = @map[type]
         return value
       end
-      raise ConfigError, "Unknown #{@kind} plugin '#{type}'. Run 'gem search -rd fluentd-plugin' to find plugins"  # TODO error class
+      fail ConfigError, "Unknown #{@kind} plugin '#{type}'. Run 'gem search -rd fluentd-plugin' to find plugins" # TODO: error class
     end
 
     def search(type)
       path = "#{@search_prefix}#{type}"
 
       # prefer LOAD_PATH than gems
-      files = $LOAD_PATH.map { |lp|
+      files = $LOAD_PATH.map do |lp|
         lpath = File.expand_path(File.join(lp, "#{path}.rb"))
         File.exist?(lpath) ? lpath : nil
-      }.compact
+      end.compact
       unless files.empty?
         # prefer newer version
         require files.sort.last
         return
       end
 
-      specs = Gem::Specification.find_all { |spec|
+      specs = Gem::Specification.find_all do |spec|
         spec.contains_requirable_file? path
-      }
+      end
 
       # prefer newer version
-      specs = specs.sort_by { |spec| spec.version }
+      specs = specs.sort_by(&:version)
       if spec = specs.last
-        spec.require_paths.each { |lib|
+        spec.require_paths.each do |lib|
           file = "#{spec.full_gem_path}/#{lib}/#{path}"
           require file
-        }
+        end
       end
     end
   end

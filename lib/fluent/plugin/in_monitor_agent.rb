@@ -26,10 +26,10 @@ module Fluent
     end
 
     config_param :bind, :string, default: '0.0.0.0'
-    config_param :port, :integer, default: 24220
+    config_param :port, :integer, default: 24_220
 
     class MonitorServlet < WEBrick::HTTPServlet::AbstractServlet
-      def initialize(server, agent)
+      def initialize(_server, agent)
         @agent = agent
       end
 
@@ -37,35 +37,31 @@ module Fluent
         begin
           code, header, body = process(req, res)
         rescue
-          code, header, body = render_json_error(500, {
-              'message '=> 'Internal Server Error',
-              'error' => "#{$!}",
-              'backgrace'=> $!.backtrace,
-            })
+          code, header, body = render_json_error(500,               'message ' => 'Internal Server Error',
+                                                                    'error' => "#{$ERROR_INFO}",
+                                                                    'backgrace' => $ERROR_INFO.backtrace)
         end
 
         # set response code, header and body
         res.status = code
-        header.each_pair {|k,v|
+        header.each_pair do|k, v|
           res[k] = v
-        }
+        end
         res.body = body
       end
 
-      def build_object(req, res)
-        unless req.path_info == ""
-          return render_json_error(404, "Not found")
-        end
+      def build_object(req, _res)
+        return render_json_error(404, 'Not found') unless req.path_info == ''
 
         # parse ?=query string
         if req.query_string
           begin
             qs = CGI.parse(req.query_string)
           rescue
-            return render_json_error(400, "Invalid query string")
+            return render_json_error(400, 'Invalid query string')
           end
         else
-          qs = Hash.new {|h,k| [] }
+          qs = Hash.new { |_h, _k| [] }
         end
 
         # if ?debug=1 is set, set :with_debug_info for get_monitor_info
@@ -113,25 +109,25 @@ module Fluent
           list = @agent.plugins_info_all(opts)
         end
 
-        return list, opts
+        [list, opts]
       end
 
       def get_search_parameter(qs, param_name)
-        return nil unless qs.has_key?(param_name)
+        return nil unless qs.key?(param_name)
         qs[param_name].first
       end
 
-      def render_json(obj, opts={})
+      def render_json(obj, opts = {})
         render_json_error(200, obj, opts)
       end
 
-      def render_json_error(code, obj, opts={})
+      def render_json_error(code, obj, opts = {})
         if opts[:pretty_json]
           js = JSON.pretty_generate(obj)
         else
           js = obj.to_json
         end
-        [code, {'Content-Type'=>'application/json'}, js]
+        [code, { 'Content-Type' => 'application/json' }, js]
       end
     end
 
@@ -144,17 +140,15 @@ module Fluent
 
         text = ''
 
-        normalized.map {|hash|
+        normalized.map do|hash|
           row = []
-          hash.each_pair {|k,v|
-            unless v.is_a?(Hash) || v.is_a?(Array)
-              row << "#{k}:#{v}"
-            end
-          }
+          hash.each_pair do|k, v|
+            row << "#{k}:#{v}" unless v.is_a?(Hash) || v.is_a?(Array)
+          end
           text << row.join("\t") << "\n"
-        }
+        end
 
-        [200, {'Content-Type'=>'text/plain'}, text]
+        [200, { 'Content-Type' => 'text/plain' }, text]
       end
     end
 
@@ -164,13 +158,13 @@ module Fluent
         return unless list
 
         render_json({
-            'plugins' => list
-          }, opts)
+                      'plugins' => list
+                    }, opts)
       end
     end
 
     class ConfigMonitorServlet < MonitorServlet
-      def build_object(req, res)
+      def build_object(_req, _res)
         {
           'pid' => Process.pid,
           'ppid' => Process.ppid
@@ -183,12 +177,12 @@ module Fluent
         result = build_object(req, res)
 
         row = []
-        JSON.parse(result.to_json).each_pair { |k, v|
+        JSON.parse(result.to_json).each_pair do |k, v|
           row << "#{k}:#{v}"
-        }
+        end
         text = row.join("\t")
 
-        [200, {'Content-Type'=>'text/plain'}, text]
+        [200, { 'Content-Type' => 'text/plain' }, text]
       end
     end
 
@@ -201,19 +195,17 @@ module Fluent
 
     def start
       log.debug "listening monitoring http server on http://#{@bind}:#{@port}/api/plugins"
-      @srv = WEBrick::HTTPServer.new({
-          BindAddress: @bind,
-          Port: @port,
-          Logger: WEBrick::Log.new(STDERR, WEBrick::Log::FATAL),
-          AccessLog: [],
-        })
+      @srv = WEBrick::HTTPServer.new(BindAddress: @bind,
+                                     Port: @port,
+                                     Logger: WEBrick::Log.new(STDERR, WEBrick::Log::FATAL),
+                                     AccessLog: [])
       @srv.mount('/api/plugins', LTSVMonitorServlet, self)
       @srv.mount('/api/plugins.json', JSONMonitorServlet, self)
       @srv.mount('/api/config', LTSVConfigMonitorServlet, self)
       @srv.mount('/api/config.json', JSONConfigMonitorServlet, self)
-      @thread = Thread.new {
+      @thread = Thread.new do
         @srv.start
-      }
+      end
     end
 
     def shutdown
@@ -231,7 +223,7 @@ module Fluent
       'output_plugin' => 'is_a?(::Fluent::Output)', # deprecated. Use plugin_category instead
       'buffer_queue_length' => '@buffer.queue_size',
       'buffer_total_queued_size' => '@buffer.total_queued_chunk_size',
-      'retry_count' => '@num_errors',
+      'retry_count' => '@num_errors'
     }
 
     def all_plugins
@@ -241,79 +233,75 @@ module Fluent
       array.concat Engine.root_agent.inputs
 
       # get all output plugins
-      Engine.root_agent.outputs.each { |o|
+      Engine.root_agent.outputs.each do |o|
         MonitorAgentInput.collect_children(o, array)
-      }
+      end
       # get all filter plugins
-      Engine.root_agent.filters.each { |f|
+      Engine.root_agent.filters.each do |f|
         MonitorAgentInput.collect_children(f, array)
-      }
-      Engine.root_agent.labels.each { |name, l|
+      end
+      Engine.root_agent.labels.each do |_name, l|
         # TODO: Add label name to outputs / filters for identifing plugins
         l.outputs.each { |o| MonitorAgentInput.collect_children(o, array) }
         l.filters.each { |f| MonitorAgentInput.collect_children(f, array) }
-      }
+      end
 
       array
     end
 
     # get nexted plugins (such as <store> of the copy plugin)
     # from the plugin `pe` recursively
-    def self.collect_children(pe, array=[])
+    def self.collect_children(pe, array = [])
       array << pe
       if pe.is_a?(MultiOutput) && pe.respond_to?(:outputs)
-        pe.outputs.each {|nop|
+        pe.outputs.each do|nop|
           collect_children(nop, array)
-        }
+        end
       end
       array
     end
 
     # try to match the tag and get the info from the matched output plugin
     # TODO: Support output in label
-    def plugin_info_by_tag(tag, opts={})
+    def plugin_info_by_tag(tag, opts = {})
       matches = Engine.root_agent.event_router.instance_variable_get(:@match_rules)
-      matches.each { |rule|
+      matches.each do |rule|
         if rule.match?(tag)
           if rule.collector.is_a?(Output)
             return get_monitor_info(rule.collector, opts)
           end
         end
-      }
+      end
       nil
     end
 
     # search a plugin by plugin_id
-    def plugin_info_by_id(plugin_id, opts={})
-      found = all_plugins.find {|pe|
+    def plugin_info_by_id(plugin_id, opts = {})
+      found = all_plugins.find do|pe|
         pe.respond_to?(:plugin_id) && pe.plugin_id.to_s == plugin_id
-      }
-      if found
-        get_monitor_info(found, opts)
-      else
-        nil
       end
+      get_monitor_info(found, opts) if found
     end
 
     # This method returns an array because
     # multiple plugins could have the same type
-    def plugins_info_by_type(type, opts={})
-      array = all_plugins.select {|pe|
+    def plugins_info_by_type(type, opts = {})
+      array = all_plugins.select do|pe|
         (pe.config['@type'] == type || pe.config['type'] == type) rescue nil
-      }
-      array.map {|pe|
+      end
+      array.map do|pe|
         get_monitor_info(pe, opts)
-      }
+      end
     end
 
-    def plugins_info_all(opts={})
-      all_plugins.map {|pe|
+    def plugins_info_all(opts = {})
+      all_plugins.map do|pe|
         get_monitor_info(pe, opts)
-      }
+      end
     end
 
     # get monitor info from the plugin `pe` and return a hash object
-    def get_monitor_info(pe, opts={})
+    def get_monitor_info(pe, opts = {})
       obj = {}
 
       # Common plugin information
@@ -323,21 +311,21 @@ module Fluent
       obj['config'] = pe.config
 
       # run MONITOR_INFO in plugins' instance context and store the info to obj
-      MONITOR_INFO.each_pair {|key,code|
+      MONITOR_INFO.each_pair do|key, code|
         begin
           obj[key] = pe.instance_eval(code)
         rescue
         end
-      }
+      end
 
       # include all instance variables if :with_debug_info is set
       if opts[:with_debug_info]
         iv = {}
         pe.instance_eval do
-          instance_variables.each {|sym|
-            key = sym.to_s[1..-1]  # removes first '@'
+          instance_variables.each do|sym|
+            key = sym.to_s[1..-1] # removes first '@'
             iv[key] = instance_variable_get(sym)
-          }
+          end
         end
         obj['instance_variables'] = iv
       end
@@ -364,10 +352,10 @@ module Fluent
 
     def get_fluentd_opts
       opts = {}
-      ObjectSpace.each_object(Fluent::Supervisor) { |obj|
+      ObjectSpace.each_object(Fluent::Supervisor) do |obj|
         opts.merge!(obj.options)
         break
-      }
+      end
       opts
     end
   end

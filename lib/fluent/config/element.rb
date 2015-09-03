@@ -24,9 +24,9 @@ module Fluent
         @arg = arg
         @elements = elements
         super()
-        attrs.each { |k, v|
+        attrs.each do |k, v|
           self[k] = v
-        }
+        end
         @unused = unused || attrs.keys
         @v1_config = false
         @corresponding_proxies = [] # some plugins use flat parameters, e.g. in_http doesn't provide <format> section for parser.
@@ -35,7 +35,7 @@ module Fluent
 
       attr_accessor :name, :arg, :elements, :unused, :v1_config, :corresponding_proxies, :unused_in
 
-      def add_element(name, arg='')
+      def add_element(name, arg = '')
         e = Element.new(name, arg, {}, [])
         e.v1_config = @v1_config
         @elements << e
@@ -44,16 +44,16 @@ module Fluent
 
       def inspect
         attrs = super
-        "name:#{@name}, arg:#{@arg}, " + attrs + ", " + @elements.inspect
+        "name:#{@name}, arg:#{@arg}, " + attrs + ', ' + @elements.inspect
       end
 
       # This method assumes _o_ is an Element object. Should return false for nil or other object
       def ==(o)
-        self.name == o.name && self.arg == o.arg &&
-          self.keys.size == o.keys.size &&
-          self.keys.reduce(true){|r, k| r && self[k] == o[k] } &&
-          self.elements.size == o.elements.size &&
-          [self.elements, o.elements].transpose.reduce(true){|r, e| r && e[0] == e[1] }
+        name == o.name && arg == o.arg &&
+          keys.size == o.keys.size &&
+          keys.reduce(true) { |r, k| r && self[k] == o[k] } &&
+          elements.size == o.elements.size &&
+          [elements, o.elements].transpose.reduce(true) { |r, e| r && e[0] == e[1] }
       end
 
       def +(o)
@@ -66,11 +66,9 @@ module Fluent
         if names.empty?
           @elements.each(&block)
         else
-          @elements.each { |e|
-            if names.include?(e.name)
-              block.yield(e)
-            end
-          }
+          @elements.each do |e|
+            block.yield(e) if names.include?(e.name)
+          end
         end
       end
 
@@ -85,45 +83,43 @@ module Fluent
       end
 
       def check_not_fetched(&block)
-        each_key { |key|
-          if @unused.include?(key)
-            block.call(key, self)
-          end
-        }
-        @elements.each { |e|
+        each_key do |key|
+          block.call(key, self) if @unused.include?(key)
+        end
+        @elements.each do |e|
           e.check_not_fetched(&block)
-        }
+        end
       end
 
       def to_s(nest = 0)
-        indent = "  " * nest
-        nindent = "  " * (nest + 1)
-        out = ""
+        indent = '  ' * nest
+        nindent = '  ' * (nest + 1)
+        out = ''
         if @arg.empty?
           out << "#{indent}<#{@name}>\n"
         else
           out << "#{indent}<#{@name} #{@arg}>\n"
         end
-        each_pair { |k, v|
+        each_pair do |k, v|
           if secret_param?(k)
             out << "#{nindent}#{k} xxxxxx\n"
           else
             out << "#{nindent}#{k} #{v}\n"
           end
-        }
-        @elements.each { |e|
+        end
+        @elements.each do |e|
           out << e.to_s(nest + 1)
-        }
+        end
         out << "#{indent}</#{@name}>\n"
         out
       end
 
       def to_masked_element
-        new_elems = @elements.map { |e| e.to_masked_element }
+        new_elems = @elements.map(&:to_masked_element)
         new_elem = Element.new(@name, @arg, {}, new_elems, @unused)
-        each_pair { |k, v|
+        each_pair do |k, v|
           new_elem[k] = secret_param?(k) ? 'xxxxxx' : v
-        }
+        end
         new_elem
       end
 
@@ -131,12 +127,10 @@ module Fluent
         return false if @corresponding_proxies.empty?
 
         param_key = key.to_sym
-        @corresponding_proxies.each { |proxy|
+        @corresponding_proxies.each do |proxy|
           block, opts = proxy.params[param_key]
-          if opts && opts.has_key?(:secret)
-            return opts[:secret]
-          end
-        }
+          return opts[:secret] if opts && opts.key?(:secret)
+        end
 
         false
       end

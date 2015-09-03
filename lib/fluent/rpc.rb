@@ -29,7 +29,7 @@ module Fluent
           BindAddress: @bind,
           Port: @port,
           Logger: WEBrick::Log.new(STDERR, WEBrick::Log::FATAL),
-          AccessLog: [],
+          AccessLog: []
         )
       end
 
@@ -39,23 +39,23 @@ module Fluent
       end
 
       def mount_proc(path, &block)
-        @server.mount_proc(path) { |req, res|
+        @server.mount_proc(path) do |req, res|
           begin
             code, header, body = block.call(req, res)
           rescue => e
-            @log.warn "failed to handle RPC request", path: path, error: e.to_s
+            @log.warn 'failed to handle RPC request', path: path, error: e.to_s
             @log.warn_backtrace e.backtrace
 
             code = 500
             body = {
-              'message '=> 'Internal Server Error',
+              'message ' => 'Internal Server Error',
               'error' => "#{e}",
-              'backtrace'=> e.backtrace,
+              'backtrace' => e.backtrace
             }
           end
 
           code = 200 if code.nil?
-          header = {'Content-Type' => 'application/json'} if header.nil?
+          header = { 'Content-Type' => 'application/json' } if header.nil?
           body = if body.nil?
                    '{"ok":true}'
                  else
@@ -64,19 +64,19 @@ module Fluent
                  end
 
           res.status = code
-          header.each_pair { |k, v|
+          header.each_pair do |k, v|
             res[k] = v
-          }
+          end
           res.body = body
-        }
+        end
         @log.debug "register #{path} RPC handler"
       end
 
       def start
         @log.debug "listening RPC http server on http://#{@bind}:#{@port}/"
-        @thread = Thread.new {
+        @thread = Thread.new do
           @server.start
-        }
+        end
       end
 
       def shutdown

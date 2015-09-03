@@ -31,12 +31,12 @@ module Fluent
     def configure(conf)
       super
 
-      conf.elements.select {|e|
+      conf.elements.select do|e|
         e.name == 'store'
-      }.each {|e|
+      end.each do|e|
         type = e['@type'] || e['type']
         unless type
-          raise ConfigError, "Missing 'type' parameter on <store> directive"
+          fail ConfigError, "Missing 'type' parameter on <store> directive"
         end
 
         weight = e['weight']
@@ -48,23 +48,19 @@ module Fluent
         output.configure(e)
         @outputs << output
         @weights << weight
-      }
-      @rr = -1  # starts from @output[0]
+      end
+      @rr = -1 # starts from @output[0]
       @rand_seed = Random.new.seed
     end
 
     def start
       rebuild_weight_array
 
-      @outputs.each {|o|
-        o.start
-      }
+      @outputs.each(&:start)
     end
 
     def shutdown
-      @outputs.each {|o|
-        o.shutdown
-      }
+      @outputs.each(&:shutdown)
     end
 
     def emit(tag, es, chain)
@@ -79,17 +75,17 @@ module Fluent
     end
 
     def rebuild_weight_array
-      gcd = @weights.inject(0) {|r,w| r.gcd(w) }
+      gcd = @weights.inject(0) { |r, w| r.gcd(w) }
 
       weight_array = []
-      @outputs.zip(@weights).each {|output,weight|
-        (weight / gcd).times {
+      @outputs.zip(@weights).each do|output, weight|
+        (weight / gcd).times do
           weight_array << output
-        }
-      }
+        end
+      end
 
       # don't randomize order if all weight is 1 (=default)
-      if @weights.any? {|w| w > 1 }
+      if @weights.any? { |w| w > 1 }
         r = Random.new(@rand_seed)
         weight_array.sort_by! { r.rand }
       end

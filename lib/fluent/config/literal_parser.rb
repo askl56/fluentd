@@ -16,10 +16,9 @@
 
 module Fluent
   module Config
-
     require 'yajl'
     require 'fluent/config/basic_parser'
-    require 'irb/ruby-lex'  # RubyLex
+    require 'irb/ruby-lex' # RubyLex
 
     class LiteralParser < BasicParser
       def self.unescape_char(c)
@@ -75,35 +74,35 @@ module Fluent
 
       def scan_double_quoted_string
         string = []
-        while true
+        loop do
           if skip(/\"/)
             return string.join
           elsif s = scan(/\\./)
-            string << eval_escape_char(s[1,1])
+            string << eval_escape_char(s[1, 1])
           elsif skip(/\#\{/)
             string << eval_embedded_code(scan_embedded_code)
             skip(/\}/)
           elsif s = scan(/./)
             string << s
           else
-            parse_error! "unexpected end of file in a double quoted string"
+            parse_error! 'unexpected end of file in a double quoted string'
           end
         end
       end
 
       def scan_single_quoted_string
         string = []
-        while true
+        loop do
           if skip(/\'/)
             return string.join
           elsif s = scan(/\\'/)
             string << "'"
           elsif s = scan(/\\\\/)
-            string << "\\"
+            string << '\\'
           elsif s = scan(/./)
             string << s
           else
-            parse_error! "unexpected end of file in a signle quoted string"
+            parse_error! 'unexpected end of file in a signle quoted string'
           end
         end
       end
@@ -112,7 +111,7 @@ module Fluent
         charset = /(?!#{boundary_charset})./
 
         string = []
-        while true
+        loop do
           if s = scan(/\#/)
             string << '#'
           elsif s = scan(charset)
@@ -122,27 +121,25 @@ module Fluent
           end
         end
 
-        if string.empty?
-          return nil
-        end
+        return nil if string.empty?
 
         string.join
       end
 
       def scan_embedded_code
         rlex = RubyLex.new
-        src = '"#{'+@ss.rest+"\n=end\n}"
+        src = '"#{' + @ss.rest + "\n=end\n}"
 
         input = StringIO.new(src)
         input.define_singleton_method(:encoding) { external_encoding }
         rlex.set_input(input)
 
         tk = rlex.token
-        code = src[3,tk.seek-3]
+        code = src[3, tk.seek - 3]
 
         if @ss.rest.length < code.length
           @ss.pos += @ss.rest.length
-          parse_error! "expected end of embedded code but $end"
+          parse_error! 'expected end of embedded code but $end'
         end
 
         @ss.pos += code.length
@@ -152,7 +149,7 @@ module Fluent
 
       def eval_embedded_code(code)
         if @eval_context.nil?
-          parse_error! "embedded code is not allowed in this file"
+          parse_error! 'embedded code is not allowed in this file'
         end
         @eval_context.instance_eval(code)
       end
@@ -163,19 +160,19 @@ module Fluent
           '"'
         when "'"
           "'"
-        when "r"
+        when 'r'
           "\r"
-        when "n"
+        when 'n'
           "\n"
-        when "t"
+        when 't'
           "\t"
-        when "f"
+        when 'f'
           "\f"
-        when "b"
+        when 'b'
           "\b"
         when /[a-zA-Z0-9]/
           parse_error! "unexpected back-slash escape character '#{c}'"
-        else  # symbols
+        else # symbols
           c
         end
       end
@@ -185,20 +182,20 @@ module Fluent
         # Yajl does not raise ParseError for imcomplete json string, like '[1', '{"h"', '{"h":' or '{"h1":1'
         # This is the reason to use JSON module.
 
-        buffer = (is_array ? "[" : "{")
-        line_buffer = ""
+        buffer = (is_array ? '[' : '{')
+        line_buffer = ''
 
         until result
           char = getch
 
           break if char.nil?
 
-          if char == "#"
+          if char == '#'
             # If this is out of json string literals, this object can be parsed correctly
             # '{"foo":"bar", #' -> '{"foo":"bar"}' (to check)
             parsed = nil
             begin
-              parsed = JSON.parse(buffer + line_buffer.rstrip.sub(/,$/, '') + (is_array ? "]" : "}"))
+              parsed = JSON.parse(buffer + line_buffer.rstrip.sub(/,$/, '') + (is_array ? ']' : '}'))
             rescue JSON::ParserError => e
               # This '#' is in json string literals
             end
@@ -209,7 +206,7 @@ module Fluent
                 # ignore comment char
               end
               buffer << line_buffer + "\n"
-              line_buffer = ""
+              line_buffer = ''
             else
               # '#' is a char in json string
               line_buffer << char
@@ -220,7 +217,7 @@ module Fluent
 
           if char == "\n"
             buffer << line_buffer + "\n"
-            line_buffer = ""
+            line_buffer = ''
             next
           end
 

@@ -101,7 +101,7 @@ class MatchTest < Test::Unit::TestCase
     assert_or_not_match('a.b.** a.c', 'a.c.d')
   end
 
-  #def test_character_class
+  # def test_character_class
   #  assert_match('[a]', 'a')
   #  assert_match('[ab]', 'a')
   #  assert_match('[ab]', 'b')
@@ -115,7 +115,7 @@ class MatchTest < Test::Unit::TestCase
   #  assert_match('[a-b0-9]', 'a')
   #  assert_match('[a-b0-9]', '0')
   #  assert_not_match('[a-b0-9]', 'c')
-  #end
+  # end
 
   def assert_glob_match(pat, str)
     assert_true GlobMatchPattern.new(pat).match(str)

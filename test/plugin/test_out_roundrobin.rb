@@ -17,7 +17,7 @@ class RoundRobinOutputTest < Test::Unit::TestCase
     Fluent::Test.setup
   end
 
-  CONFIG = %[
+  CONFIG = %(
     <store>
       type test
       name c0
@@ -30,8 +30,8 @@ class RoundRobinOutputTest < Test::Unit::TestCase
       type test
       name c2
     </store>
-  ]
-  CONFIG_WITH_WEIGHT = %[
+  )
+  CONFIG_WITH_WEIGHT = %(
     <store>
       type test
       name c0
@@ -46,7 +46,7 @@ class RoundRobinOutputTest < Test::Unit::TestCase
       type test
       name c2
     </store>
-  ]
+  )
 
   def create_driver(conf = CONFIG)
     Fluent::Test::OutputTestDriver.new(Fluent::RoundRobinOutput).configure(conf)
@@ -60,9 +60,9 @@ class RoundRobinOutputTest < Test::Unit::TestCase
     assert_equal Fluent::TestOutput, outputs[0].class
     assert_equal Fluent::TestOutput, outputs[1].class
     assert_equal Fluent::TestOutput, outputs[2].class
-    assert_equal "c0", outputs[0].name
-    assert_equal "c1", outputs[1].name
-    assert_equal "c2", outputs[2].name
+    assert_equal 'c0', outputs[0].name
+    assert_equal 'c1', outputs[1].name
+    assert_equal 'c2', outputs[2].name
 
     weights = d.instance.weights
     assert_equal 3, weights.size
@@ -77,9 +77,9 @@ class RoundRobinOutputTest < Test::Unit::TestCase
     assert_equal Fluent::TestOutput, outputs[0].class
     assert_equal Fluent::TestOutput, outputs[1].class
     assert_equal Fluent::TestOutput, outputs[2].class
-    assert_equal "c0", outputs[0].name
-    assert_equal "c1", outputs[1].name
-    assert_equal "c2", outputs[2].name
+    assert_equal 'c0', outputs[0].name
+    assert_equal 'c1', outputs[1].name
+    assert_equal 'c2', outputs[2].name
 
     weights = d.instance.weights
     assert_equal 3, weights.size
@@ -91,28 +91,28 @@ class RoundRobinOutputTest < Test::Unit::TestCase
   def test_emit
     d = create_driver
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
     d.run do
-      d.emit({"a"=>1}, time)
-      d.emit({"a"=>2}, time)
-      d.emit({"a"=>3}, time)
-      d.emit({"a"=>4}, time)
+      d.emit({ 'a' => 1 }, time)
+      d.emit({ 'a' => 2 }, time)
+      d.emit({ 'a' => 3 }, time)
+      d.emit({ 'a' => 4 }, time)
     end
 
     os = d.instance.outputs
 
     assert_equal [
-        [time, {"a"=>1}],
-        [time, {"a"=>4}],
-      ], os[0].events
+      [time, { 'a' => 1 }],
+      [time, { 'a' => 4 }]
+    ], os[0].events
 
     assert_equal [
-        [time, {"a"=>2}],
-      ], os[1].events
+      [time, { 'a' => 2 }]
+    ], os[1].events
 
     assert_equal [
-        [time, {"a"=>3}],
-      ], os[2].events
+      [time, { 'a' => 3 }]
+    ], os[2].events
 
     d.instance.outputs.each {|o|
       assert_not_nil o.router
@@ -122,10 +122,10 @@ class RoundRobinOutputTest < Test::Unit::TestCase
   def test_emit_weighted
     d = create_driver(CONFIG_WITH_WEIGHT)
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
     d.run do
       14.times do |i|
-        d.emit({"a"=>i}, time)
+        d.emit({ 'a' => i }, time)
       end
     end
 
@@ -136,4 +136,3 @@ class RoundRobinOutputTest < Test::Unit::TestCase
     assert_equal 2, os[2].events.size  # weight=1
   end
 end
-

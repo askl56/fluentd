@@ -22,19 +22,18 @@ module Fluent
       false
     end
 
-    def each(&block)
-      raise NotImplementedError, "DO NOT USE THIS CLASS directly."
+    def each(&_block)
+      fail NotImplementedError, 'DO NOT USE THIS CLASS directly.'
     end
 
     def to_msgpack_stream
       out = MessagePack::Packer.new # MessagePack::Packer is fastest way to serialize events
-      each {|time,record|
-        out.write([time,record])
-      }
+      each do|time, record|
+        out.write([time, record])
+      end
       out.to_s
     end
   end
-
 
   class OneEventStream < EventStream
     def initialize(time, record)
@@ -66,7 +65,7 @@ module Fluent
     end
 
     def dup
-      entries = @entries.map { |entry| entry.dup } # @entries.map(:dup) doesn't work by ArgumentError
+      entries = @entries.map(&:dup) # @entries.map(:dup) doesn't work by ArgumentError
       ArrayEventStream.new(entries)
     end
 
@@ -102,9 +101,9 @@ module Fluent
 
     def dup
       es = MultiEventStream.new
-      @time_array.zip(@record_array).each { |time, record|
+      @time_array.zip(@record_array).each do |time, record|
         es.add(time, record.dup)
-      }
+      end
       es
     end
 
@@ -124,7 +123,7 @@ module Fluent
     def each(&block)
       time_array = @time_array
       record_array = @record_array
-      for i in 0..time_array.length-1
+      for i in 0..time_array.length - 1
         block.call(time_array[i], record_array[i])
       end
       nil
@@ -133,7 +132,7 @@ module Fluent
 
   class MessagePackEventStream < EventStream
     # Keep cached_unpacker argument for existence plugins
-    def initialize(data, cached_unpacker = nil)
+    def initialize(data, _cached_unpacker = nil)
       @data = data
     end
 
@@ -142,7 +141,7 @@ module Fluent
     end
 
     def each(&block)
-      # TODO format check
+      # TODO: format check
       unpacker = MessagePack::Unpacker.new
       unpacker.feed_each(@data, &block)
       nil
@@ -153,4 +152,3 @@ module Fluent
     end
   end
 end
-

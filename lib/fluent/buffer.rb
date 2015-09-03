@@ -23,7 +23,6 @@ module Fluent
   class BufferQueueLimitError < BufferError
   end
 
-
   class Buffer
     include Configurable
 
@@ -41,30 +40,29 @@ module Fluent
     def shutdown
     end
 
-    def before_shutdown(out)
+    def before_shutdown(_out)
     end
 
-    def emit(key, data, chain)
-      raise NotImplementedError, "Implement this method in child class"
+    def emit(_key, _data, _chain)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def keys
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
-    def push(key)
-      raise NotImplementedError, "Implement this method in child class"
+    def push(_key)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
-    def pop(out)
-      raise NotImplementedError, "Implement this method in child class"
+    def pop(_out)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def clear!
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
   end
-
 
   class BufferChunk
     include MonitorMixin
@@ -76,12 +74,12 @@ module Fluent
 
     attr_reader :key
 
-    def <<(data)
-      raise NotImplementedError, "Implement this method in child class"
+    def <<(_data)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def size
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def empty?
@@ -89,38 +87,37 @@ module Fluent
     end
 
     def close
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def purge
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def read
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def open
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def write_to(io)
-      open {|i|
+      open do|i|
         FileUtils.copy_stream(i, io)
-      }
+      end
     end
 
     def msgpack_each(&block)
-      open {|io|
+      open do|io|
         u = MessagePack::Unpacker.new(io)
         begin
           u.each(&block)
         rescue EOFError
         end
-      }
+      end
     end
   end
-
 
   class BasicBuffer < Buffer
     include MonitorMixin
@@ -132,20 +129,20 @@ module Fluent
       @parallel_pop = true
     end
 
-    def enable_parallel(b=true)
+    def enable_parallel(b = true)
       @parallel_pop = b
     end
 
     # This configuration assumes plugins to send records to a remote server.
     # Local file based plugins which should provide more reliability and efficiency
     # should override buffer_chunk_limit with a larger size.
-    config_param :buffer_chunk_limit, :size, default: 8*1024*1024
+    config_param :buffer_chunk_limit, :size, default: 8 * 1024 * 1024
     config_param :buffer_queue_limit, :integer, default: 256
 
-    alias chunk_limit buffer_chunk_limit
-    alias chunk_limit= buffer_chunk_limit=
-    alias queue_limit buffer_queue_limit
-    alias queue_limit= buffer_queue_limit=
+    alias_method :chunk_limit, :buffer_chunk_limit
+    alias_method :chunk_limit=, :buffer_chunk_limit=
+    alias_method :queue_limit, :buffer_queue_limit
+    alias_method :queue_limit=, :buffer_queue_limit=
 
     def configure(conf)
       super
@@ -159,13 +156,11 @@ module Fluent
     def shutdown
       synchronize do
         @queue.synchronize do
-          until @queue.empty?
-            @queue.shift.close
-          end
+          @queue.shift.close until @queue.empty?
         end
-        @map.each_pair {|key,chunk|
+        @map.each_pair do|_key, chunk|
           chunk.close
-        }
+        end
       end
     end
 
@@ -186,14 +181,14 @@ module Fluent
           return false
 
         elsif @queue.size >= @buffer_queue_limit
-          raise BufferQueueLimitError, "queue size exceeds limit"
+          fail BufferQueueLimitError, 'queue size exceeds limit'
         end
 
         if data.bytesize > @buffer_chunk_limit
-          $log.warn "Size of the emitted data exceeds buffer_chunk_limit."
-          $log.warn "This may occur problems in the output plugins ``at this server.``"
-          $log.warn "To avoid problems, set a smaller number to the buffer_chunk_limit"
-          $log.warn "in the forward output ``at the log forwarding server.``"
+          $log.warn 'Size of the emitted data exceeds buffer_chunk_limit.'
+          $log.warn 'This may occur problems in the output plugins ``at this server.``'
+          $log.warn 'To avoid problems, set a smaller number to the buffer_chunk_limit'
+          $log.warn 'in the forward output ``at the log forwarding server.``'
           ### TODO
           # raise BufferChunkLimitError, "received data too large"
         end
@@ -207,12 +202,12 @@ module Fluent
           chain.next
 
           flush_trigger = false
-          @queue.synchronize {
+          @queue.synchronize do
             enqueue(chunk) # this is buffer enqueue *hook*
             flush_trigger = @queue.empty?
             @queue << chunk # actual enqueue
             @map[key] = nc
-          }
+          end
 
           ok = true
           # false: queue have 1 or more chunks before this emit
@@ -223,8 +218,7 @@ module Fluent
         ensure
           nc.purge unless ok
         end
-
-      end  # synchronize
+      end # synchronize
     end
 
     def keys
@@ -237,40 +231,38 @@ module Fluent
 
     def total_queued_chunk_size
       total = 0
-      synchronize {
-        @map.each_value {|c|
+      synchronize do
+        @map.each_value do|c|
           total += c.size
-        }
-        @queue.synchronize {
-          @queue.each {|c|
+        end
+        @queue.synchronize do
+          @queue.each do|c|
             total += c.size
-          }
-        }
-      }
+          end
+        end
+      end
       total
     end
 
-    def new_chunk(key)
-      raise NotImplementedError, "Implement this method in child class"
+    def new_chunk(_key)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def resume
-      raise NotImplementedError, "Implement this method in child class"
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     # enqueueing is done by #push
     # this method is actually 'enqueue_hook'
-    def enqueue(chunk)
-      raise NotImplementedError, "Implement this method in child class"
+    def enqueue(_chunk)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     # get the chunk specified by key, and push it into queue
     def push(key)
       synchronize do
         chunk = @map[key]
-        if !chunk || chunk.empty?
-          return false
-        end
+        return false if !chunk || chunk.empty?
 
         @queue.synchronize do
           enqueue(chunk)
@@ -279,7 +271,7 @@ module Fluent
         end
 
         return true
-      end  # synchronize
+      end # synchronize
     end
 
     # shift a chunk from queue, write and purge it
@@ -288,7 +280,7 @@ module Fluent
       chunk = nil
       @queue.synchronize do
         if @parallel_pop
-          chunk = @queue.find {|c| c.try_mon_enter }
+          chunk = @queue.find(&:try_mon_enter)
           return false unless chunk
         else
           chunk = @queue.first
@@ -300,15 +292,13 @@ module Fluent
       begin
         # #push(key) does not push empty chunks into queue.
         # so this check is nonsense...
-        if !chunk.empty?
-          write_chunk(chunk, out)
-        end
+        write_chunk(chunk, out) unless chunk.empty?
 
         queue_empty = false
         @queue.synchronize do
-          @queue.delete_if {|c|
+          @queue.delete_if do|c|
             c.object_id == chunk.object_id
-          }
+          end
           queue_empty = @queue.empty?
         end
 
@@ -326,11 +316,10 @@ module Fluent
     end
 
     def clear!
-      @queue.delete_if {|chunk|
+      @queue.delete_if do|chunk|
         chunk.purge
         true
-      }
+      end
     end
   end
 end
-

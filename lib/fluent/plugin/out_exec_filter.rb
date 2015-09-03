@@ -32,7 +32,7 @@ module Fluent
 
     config_param :in_format, default: :tsv do |val|
       f = ExecUtil::SUPPORTED_FORMAT[val]
-      raise ConfigError, "Unsupported in_format '#{val}'" unless f
+      fail ConfigError, "Unsupported in_format '#{val}'" unless f
       f
     end
     config_param :in_keys, default: [] do |val|
@@ -44,10 +44,10 @@ module Fluent
 
     config_param :out_format, default: :tsv do |val|
       f = ExecUtil::SUPPORTED_FORMAT[val]
-      raise ConfigError, "Unsupported out_format '#{val}'" unless f
+      fail ConfigError, "Unsupported out_format '#{val}'" unless f
       f
     end
-    config_param :out_keys, default: [] do |val|  # for tsv format
+    config_param :out_keys, default: [] do |val| # for tsv format
       val.split(',')
     end
     config_param :out_tag_key, default: nil
@@ -73,19 +73,19 @@ module Fluent
 
     def configure(conf)
       if tag_key = conf['tag_key']
-        # TODO obsoleted?
+        # TODO: obsoleted?
         @in_tag_key = tag_key
         @out_tag_key = tag_key
       end
 
       if time_key = conf['time_key']
-        # TODO obsoleted?
+        # TODO: obsoleted?
         @in_time_key = time_key
         @out_time_key = time_key
       end
 
       if time_format = conf['time_format']
-        # TODO obsoleted?
+        # TODO: obsoleted?
         @in_time_format = time_format
         @out_time_format = time_format
       end
@@ -104,7 +104,7 @@ module Fluent
       end
 
       if !@tag && !@out_tag_key
-        raise ConfigError, "'tag' or 'out_tag_key' option is required on exec_filter output"
+        fail ConfigError, "'tag' or 'out_tag_key' option is required on exec_filter output"
       end
 
       if @in_time_key
@@ -112,7 +112,7 @@ module Fluent
           tf = TimeFormatter.new(f, @localtime, @timezone)
           @time_format_proc = tf.method(:format)
         else
-          @time_format_proc = Proc.new {|time| time.to_s }
+          @time_format_proc = proc { |time| time.to_s }
         end
       elsif @in_time_format
         log.warn "in_time_format effects nothing when in_time_key is not specified: #{conf}"
@@ -120,9 +120,9 @@ module Fluent
 
       if @out_time_key
         if f = @out_time_format
-          @time_parse_proc = Proc.new {|str| Time.strptime(str, f).to_i }
+          @time_parse_proc = proc { |str| Time.strptime(str, f).to_i }
         else
-          @time_parse_proc = Proc.new {|str| str.to_i }
+          @time_parse_proc = proc { |str| str.to_i }
         end
       elsif @out_time_format
         log.warn "out_time_format effects nothing when out_time_key is not specified: #{conf}"
@@ -132,14 +132,12 @@ module Fluent
         @removed_prefix_string = @remove_prefix + '.'
         @removed_length = @removed_prefix_string.length
       end
-      if @add_prefix
-        @added_prefix_string = @add_prefix + '.'
-      end
+      @added_prefix_string = @add_prefix + '.' if @add_prefix
 
       case @in_format
       when :tsv
         if @in_keys.empty?
-          raise ConfigError, "in_keys option is required on exec_filter output for tsv in_format"
+          fail ConfigError, 'in_keys option is required on exec_filter output for tsv in_format'
         end
         @formatter = ExecUtil::TSVFormatter.new(@in_keys)
       when :json
@@ -151,7 +149,7 @@ module Fluent
       case @out_format
       when :tsv
         if @out_keys.empty?
-          raise ConfigError, "out_keys option is required on exec_filter output for tsv in_format"
+          fail ConfigError, 'out_keys option is required on exec_filter output for tsv in_format'
         end
         @parser = ExecUtil::TSVParser.new(@out_keys, method(:on_message))
       when :json
@@ -160,14 +158,14 @@ module Fluent
         @parser = ExecUtil::MessagePackParser.new(method(:on_message))
       end
 
-      @respawns = if @child_respawn.nil? or @child_respawn == 'none' or @child_respawn == '0'
+      @respawns = if @child_respawn.nil? || @child_respawn == 'none' || @child_respawn == '0'
                     0
-                  elsif @child_respawn == 'inf' or @child_respawn == '-1'
+                  elsif @child_respawn == 'inf' || @child_respawn == '-1'
                     -1
                   elsif @child_respawn =~ /^\d+$/
                     @child_respawn.to_i
                   else
-                    raise ConfigError, "child_respawn option argument invalid: none(or 0), inf(or -1) or positive number"
+                    fail ConfigError, 'child_respawn option argument invalid: none(or 0), inf(or -1) or positive number'
                   end
 
       @suppress_error_log_interval ||= 0
@@ -193,40 +191,36 @@ module Fluent
 
     def before_shutdown
       super
-      log.debug "out_exec_filter#before_shutdown called"
-      @children.each {|c|
+      log.debug 'out_exec_filter#before_shutdown called'
+      @children.each do|c|
         c.finished = true
-      }
-      sleep 0.5  # TODO wait time before killing child process
+      end
+      sleep 0.5 # TODO: wait time before killing child process
     end
 
     def shutdown
       super
 
-      @children.reject! {|c|
+      @children.reject! do|c|
         c.shutdown
         true
-      }
+      end
     end
 
     def format_stream(tag, es)
       if @remove_prefix
-        if (tag[0, @removed_length] == @removed_prefix_string and tag.length > @removed_length) or tag == @removed_prefix
+        if (tag[0, @removed_length] == @removed_prefix_string && tag.length > @removed_length) || tag == @removed_prefix
           tag = tag[@removed_length..-1] || ''
         end
       end
 
       out = ''
 
-      es.each {|time,record|
-        if @in_time_key
-          record[@in_time_key] = @time_format_proc.call(time)
-        end
-        if @in_tag_key
-          record[@in_tag_key] = tag
-        end
+      es.each do|time, record|
+        record[@in_time_key] = @time_format_proc.call(time) if @in_time_key
+        record[@in_tag_key] = tag if @in_tag_key
         @formatter.call(record, out)
-      }
+      end
 
       out
     end
@@ -239,7 +233,7 @@ module Fluent
     class ChildProcess
       attr_accessor :finished
 
-      def initialize(parser, respawns=0, log = $log)
+      def initialize(parser, respawns = 0, log = $log)
         @pid = nil
         @thread = nil
         @parser = parser
@@ -252,7 +246,7 @@ module Fluent
       def start(command)
         @command = command
         @mutex.synchronize do
-          @io = IO.popen(command, "r+")
+          @io = IO.popen(command, 'r+')
           @pid = @io.pid
           @io.sync = true
           @thread = Thread.new(&method(:run))
@@ -263,7 +257,7 @@ module Fluent
       def kill_child(join_wait)
         begin
           Process.kill(:TERM, @pid)
-        rescue #Errno::ECHILD, Errno::ESRCH, Errno::EPERM
+        rescue # Errno::ECHILD, Errno::ESRCH, Errno::EPERM
           # Errno::ESRCH 'No such process', ignore
           # child process killed by signal chained from fluentd process
         end
@@ -273,7 +267,7 @@ module Fluent
         end
         begin
           Process.kill(:KILL, @pid)
-        rescue #Errno::ECHILD, Errno::ESRCH, Errno::EPERM
+        rescue # Errno::ECHILD, Errno::ESRCH, Errno::EPERM
           # ignore if successfully killed by :TERM
         end
         @thread.join
@@ -282,21 +276,19 @@ module Fluent
       def shutdown
         @finished = true
         @mutex.synchronize do
-          kill_child(60) # TODO wait time
+          kill_child(60) # TODO: wait time
         end
       end
 
       def write(chunk)
-        begin
-          chunk.write_to(@io)
-        rescue Errno::EPIPE => e
-          # Broken pipe (child process unexpectedly exited)
-          @log.warn "exec_filter Broken pipe, child process maybe exited.", command: @command
-          if try_respawn
-            retry # retry chunk#write_to with child respawned
-          else
-            raise e # to retry #write with other ChildProcess instance (when num_children > 1)
-          end
+        chunk.write_to(@io)
+      rescue Errno::EPIPE => e
+        # Broken pipe (child process unexpectedly exited)
+        @log.warn 'exec_filter Broken pipe, child process maybe exited.', command: @command
+        if try_respawn
+          retry # retry chunk#write_to with child respawned
+        else
+          raise e # to retry #write with other ChildProcess instance (when num_children > 1)
         end
       end
 
@@ -305,28 +297,28 @@ module Fluent
         @mutex.synchronize do
           return false if @respawns == 0
 
-          kill_child(5) # TODO wait time
+          kill_child(5) # TODO: wait time
 
-          @io = IO.popen(@command, "r+")
+          @io = IO.popen(@command, 'r+')
           @pid = @io.pid
           @io.sync = true
           @thread = Thread.new(&method(:run))
 
           @respawns -= 1 if @respawns > 0
         end
-        @log.warn "exec_filter child process successfully respawned.", command: @command, respawns: @respawns
+        @log.warn 'exec_filter child process successfully respawned.', command: @command, respawns: @respawns
         true
       end
 
       def run
         @parser.call(@io)
       rescue
-        @log.error "exec_filter thread unexpectedly failed with an error.", command:@command, error:$!.to_s
-        @log.warn_backtrace $!.backtrace
+        @log.error 'exec_filter thread unexpectedly failed with an error.', command: @command, error: $ERROR_INFO.to_s
+        @log.warn_backtrace $ERROR_INFO.backtrace
       ensure
         pid, stat = Process.waitpid2(@pid)
         unless @finished
-          @log.error "exec_filter process unexpectedly exited.", command:@command, ecode:stat.to_i
+          @log.error 'exec_filter process unexpectedly exited.', command: @command, ecode: stat.to_i
           unless @respawns == 0
             @log.warn "exec_filter child process will respawn for next input data (respawns #{@respawns})."
           end
@@ -354,8 +346,8 @@ module Fluent
       router.emit(tag, time, record)
     rescue
       if @suppress_error_log_interval == 0 || Time.now.to_i > @next_log_time
-        log.error "exec_filter failed to emit", error:$!.to_s, error_class:$!.class.to_s, record:Yajl.dump(record)
-        log.warn_backtrace $!.backtrace
+        log.error 'exec_filter failed to emit', error: $ERROR_INFO.to_s, error_class: $ERROR_INFO.class.to_s, record: Yajl.dump(record)
+        log.warn_backtrace $ERROR_INFO.backtrace
         @next_log_time = Time.now.to_i + @suppress_error_log_interval
       end
     end

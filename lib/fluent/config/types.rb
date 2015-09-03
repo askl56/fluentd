@@ -21,13 +21,13 @@ module Fluent
     def self.size_value(str)
       case str.to_s
       when /([0-9]+)k/i
-        $~[1].to_i * 1024
+        $LAST_MATCH_INFO[1].to_i * 1024
       when /([0-9]+)m/i
-        $~[1].to_i * (1024 ** 2)
+        $LAST_MATCH_INFO[1].to_i * (1024**2)
       when /([0-9]+)g/i
-        $~[1].to_i * (1024 ** 3)
+        $LAST_MATCH_INFO[1].to_i * (1024**3)
       when /([0-9]+)t/i
-        $~[1].to_i * (1024 ** 4)
+        $LAST_MATCH_INFO[1].to_i * (1024**4)
       else
         str.to_i
       end
@@ -36,13 +36,13 @@ module Fluent
     def self.time_value(str)
       case str.to_s
       when /([0-9]+)s/
-        $~[1].to_i
+        $LAST_MATCH_INFO[1].to_i
       when /([0-9]+)m/
-        $~[1].to_i * 60
+        $LAST_MATCH_INFO[1].to_i * 60
       when /([0-9]+)h/
-        $~[1].to_i * 60 * 60
+        $LAST_MATCH_INFO[1].to_i * 60 * 60
       when /([0-9]+)d/
-        $~[1].to_i * 24 * 60 * 60
+        $LAST_MATCH_INFO[1].to_i * 24 * 60 * 60
       else
         str.to_f
       end
@@ -57,58 +57,56 @@ module Fluent
         false
       when ''
         true
-      else
-        nil
       end
     end
   end
 
-  Configurable.register_type(:string, Proc.new { |val, opts|
+  Configurable.register_type(:string, proc do |val, _opts|
     val
-  })
+  end)
 
-  Configurable.register_type(:enum, Proc.new { |val, opts|
+  Configurable.register_type(:enum, proc do |val, opts|
     s = val.to_sym
-    raise "Plugin BUG: config type 'enum' requires :list argument" unless opts[:list].is_a?(Array)
+    fail "Plugin BUG: config type 'enum' requires :list argument" unless opts[:list].is_a?(Array)
     unless opts[:list].include?(s)
-      raise ConfigError, "valid options are #{opts[:list].join(',')} but got #{val}"
+      fail ConfigError, "valid options are #{opts[:list].join(',')} but got #{val}"
     end
     s
-  })
+  end)
 
-  Configurable.register_type(:integer, Proc.new { |val, opts|
+  Configurable.register_type(:integer, proc do |val, _opts|
     val.to_i
-  })
+  end)
 
-  Configurable.register_type(:float, Proc.new { |val, opts|
+  Configurable.register_type(:float, proc do |val, _opts|
     val.to_f
-  })
+  end)
 
-  Configurable.register_type(:size, Proc.new { |val, opts|
+  Configurable.register_type(:size, proc do |val, _opts|
     Config.size_value(val)
-  })
+  end)
 
-  Configurable.register_type(:bool, Proc.new { |val, opts|
+  Configurable.register_type(:bool, proc do |val, _opts|
     Config.bool_value(val)
-  })
+  end)
 
-  Configurable.register_type(:time, Proc.new { |val, opts|
+  Configurable.register_type(:time, proc do |val, _opts|
     Config.time_value(val)
-  })
+  end)
 
-  Configurable.register_type(:hash, Proc.new { |val, opts|
+  Configurable.register_type(:hash, proc do |val, _opts|
     param = val.is_a?(String) ? JSON.load(val) : val
     if param.class != Hash
-      raise ConfigError, "hash required but got #{val.inspect}"
+      fail ConfigError, "hash required but got #{val.inspect}"
     end
     param
-  })
+  end)
 
-  Configurable.register_type(:array, Proc.new { |val, opts|
+  Configurable.register_type(:array, proc do |val, _opts|
     param = val.is_a?(String) ? JSON.load(val) : val
     if param.class != Array
-      raise ConfigError, "array required but got #{val.inspect}"
+      fail ConfigError, "array required but got #{val.inspect}"
     end
     param
-  })
+  end)
 end

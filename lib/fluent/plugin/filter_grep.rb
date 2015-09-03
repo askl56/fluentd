@@ -25,8 +25,8 @@ module Fluent
 
     REGEXP_MAX_NUM = 20
 
-    (1..REGEXP_MAX_NUM).each {|i| config_param :"regexp#{i}",  :string, default: nil }
-    (1..REGEXP_MAX_NUM).each {|i| config_param :"exclude#{i}", :string, default: nil }
+    (1..REGEXP_MAX_NUM).each { |i| config_param :"regexp#{i}",  :string, default: nil }
+    (1..REGEXP_MAX_NUM).each { |i| config_param :"exclude#{i}", :string, default: nil }
 
     # for test
     attr_reader :regexps
@@ -39,8 +39,8 @@ module Fluent
       (1..REGEXP_MAX_NUM).each do |i|
         next unless conf["regexp#{i}"]
         key, regexp = conf["regexp#{i}"].split(/ /, 2)
-        raise ConfigError, "regexp#{i} does not contain 2 parameters" unless regexp
-        raise ConfigError, "regexp#{i} contains a duplicated key, #{key}" if @regexps[key]
+        fail ConfigError, "regexp#{i} does not contain 2 parameters" unless regexp
+        fail ConfigError, "regexp#{i} contains a duplicated key, #{key}" if @regexps[key]
         @regexps[key] = Regexp.compile(regexp)
       end
 
@@ -48,13 +48,13 @@ module Fluent
       (1..REGEXP_MAX_NUM).each do |i|
         next unless conf["exclude#{i}"]
         key, exclude = conf["exclude#{i}"].split(/ /, 2)
-        raise ConfigError, "exclude#{i} does not contain 2 parameters" unless exclude
-        raise ConfigError, "exclude#{i} contains a duplicated key, #{key}" if @excludes[key]
+        fail ConfigError, "exclude#{i} does not contain 2 parameters" unless exclude
+        fail ConfigError, "exclude#{i} contains a duplicated key, #{key}" if @excludes[key]
         @excludes[key] = Regexp.compile(exclude)
       end
     end
 
-    def filter(tag, time, record)
+    def filter(_tag, _time, record)
       result = nil
       begin
         catch(:break_loop) do
@@ -67,7 +67,7 @@ module Fluent
           result = record
         end
       rescue => e
-        log.warn "failed to grep events", error_class: e.class, error: e.message
+        log.warn 'failed to grep events', error_class: e.class, error: e.message
         log.warn_backtrace
       end
       result

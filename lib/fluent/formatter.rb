@@ -24,15 +24,15 @@ module Fluent
       super
     end
 
-    def format(tag, time, record)
-      raise NotImplementedError, "Implement this method in child class"
+    def format(_tag, _time, _record)
+      fail NotImplementedError, 'Implement this method in child class'
     end
   end
 
   module TextFormatter
     module HandleTagAndTimeMixin
       def self.included(klass)
-        klass.instance_eval {
+        klass.instance_eval do
           config_param :include_time_key, :bool, default: false
           config_param :time_key, :string, default: 'time'
           config_param :time_format, :string, default: nil
@@ -40,25 +40,19 @@ module Fluent
           config_param :tag_key, :string, default: 'tag'
           config_param :localtime, :bool, default: true
           config_param :timezone, :string, default: nil
-        }
+        end
       end
 
       def configure(conf)
         super
 
-        if conf['utc']
-          @localtime = false
-        end
+        @localtime = false if conf['utc']
         @timef = TimeFormatter.new(@time_format, @localtime, @timezone)
       end
 
       def filter_record(tag, time, record)
-        if @include_tag_key
-          record[@tag_key] = tag
-        end
-        if @include_time_key
-          record[@time_key] = @timef.format(time)
-        end
+        record[@tag_key] = tag if @include_tag_key
+        record[@time_key] = @timef.format(time) if @include_time_key
       end
     end
 
@@ -102,9 +96,9 @@ module Fluent
 
     module StructuredFormatMixin
       def self.included(klass)
-        klass.instance_eval {
+        klass.instance_eval do
           config_param :time_as_epoch, :bool, default: false
-        }
+        end
       end
 
       def configure(conf)
@@ -114,7 +108,7 @@ module Fluent
           if @include_time_key
             @include_time_key = false
           else
-            $log.warn "include_time_key is false so ignore time_as_epoch"
+            $log.warn 'include_time_key is false so ignore time_as_epoch'
             @time_as_epoch = false
           end
         end
@@ -141,7 +135,7 @@ module Fluent
       include StructuredFormatMixin
 
       def format_record(record)
-        "#{record.to_s}\n"
+        "#{record}\n"
       end
     end
 
@@ -158,14 +152,14 @@ module Fluent
       include HandleTagAndTimeMixin
 
       config_param :delimiter, :string, default: "\t"
-      config_param :label_delimiter, :string, default:  ":"
+      config_param :label_delimiter, :string, default: ':'
 
       def format(tag, time, record)
         filter_record(tag, time, record)
-        formatted = record.inject('') { |result, pair|
+        formatted = record.inject('') do |result, pair|
           result << @delimiter if result.length.nonzero?
           result << "#{pair.first}#{@label_delimiter}#{pair.last}"
-        }
+        end
         formatted << "\n"
         formatted
       end
@@ -193,11 +187,11 @@ module Fluent
       def format(tag, time, record)
         filter_record(tag, time, record)
         row = @fields.inject([]) do |memo, key|
-            memo << record[key]
-            memo
+          memo << record[key]
+          memo
         end
         CSV.generate_line(row, col_sep: @delimiter,
-                          force_quotes: @force_quotes)
+                               force_quotes: @force_quotes)
       end
     end
 
@@ -205,7 +199,7 @@ module Fluent
       config_param :message_key, :string, default: 'message'
       config_param :add_newline, :bool, default: true
 
-      def format(tag, time, record)
+      def format(_tag, _time, record)
         text = record[@message_key].to_s.dup
         text << "\n" if @add_newline
         text
@@ -217,7 +211,7 @@ module Fluent
         @proc = proc
       end
 
-      def configure(conf)
+      def configure(_conf)
       end
 
       def format(tag, time, record)
@@ -227,23 +221,23 @@ module Fluent
 
     TEMPLATE_REGISTRY = Registry.new(:formatter_type, 'fluent/plugin/formatter_')
     {
-      'out_file' => Proc.new { OutFileFormatter.new },
-      'stdout' => Proc.new { StdoutFormatter.new },
-      'json' => Proc.new { JSONFormatter.new },
-      'hash' => Proc.new { HashFormatter.new },
-      'msgpack' => Proc.new { MessagePackFormatter.new },
-      'ltsv' => Proc.new { LabeledTSVFormatter.new },
-      'csv' => Proc.new { CsvFormatter.new },
-      'single_value' => Proc.new { SingleValueFormatter.new },
-    }.each { |name, factory|
+      'out_file' => proc { OutFileFormatter.new },
+      'stdout' => proc { StdoutFormatter.new },
+      'json' => proc { JSONFormatter.new },
+      'hash' => proc { HashFormatter.new },
+      'msgpack' => proc { MessagePackFormatter.new },
+      'ltsv' => proc { LabeledTSVFormatter.new },
+      'csv' => proc { CsvFormatter.new },
+      'single_value' => proc { SingleValueFormatter.new }
+    }.each do |name, factory|
       TEMPLATE_REGISTRY.register(name, factory)
-    }
+    end
 
     def self.register_template(name, factory_or_proc)
       factory = if factory_or_proc.is_a?(Class) # XXXFormatter
-                  Proc.new { factory_or_proc.new }
+                  proc { factory_or_proc.new }
                 elsif factory_or_proc.arity == 3 # Proc.new { |tag, time, record| }
-                  Proc.new { ProcWrappedFormatter.new(factory_or_proc) }
+                  proc { ProcWrappedFormatter.new(factory_or_proc) }
                 else # Proc.new { XXXFormatter.new }
                   factory_or_proc
                 end
@@ -258,14 +252,10 @@ module Fluent
     # Keep backward-compatibility
     def self.create(conf)
       format = conf['format']
-      if format.nil?
-        raise ConfigError, "'format' parameter is required"
-      end
+      fail ConfigError, "'format' parameter is required" if format.nil?
 
       formatter = lookup(format)
-      if formatter.respond_to?(:configure)
-        formatter.configure(conf)
-      end
+      formatter.configure(conf) if formatter.respond_to?(:configure)
       formatter
     end
   end

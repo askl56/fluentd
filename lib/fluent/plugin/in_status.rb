@@ -35,15 +35,15 @@ module Fluent
       def on_timer
         @callback.call
       rescue
-        # TODO log?
-        @log.error $!.to_s
+        # TODO: log?
+        @log.error $ERROR_INFO.to_s
         @log.error_backtrace
       end
     end
 
     def configure(conf)
       super
-      $log.warn "in_status plugin will be removed v0.14 or later. Use in_monitor_agent instead"
+      $log.warn 'in_status plugin will be removed v0.14 or later. Use in_monitor_agent instead'
     end
 
     def start
@@ -54,7 +54,7 @@ module Fluent
     end
 
     def shutdown
-      @loop.watchers.each {|w| w.detach }
+      @loop.watchers.each(&:detach)
       @loop.stop
       @thread.join
     end
@@ -62,15 +62,15 @@ module Fluent
     def run
       @loop.run
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
     def on_timer
       now = Engine.now
-      Status.each {|record|
+      Status.each do|record|
         router.emit(@tag, now, record)
-      }
+      end
     end
   end
 end

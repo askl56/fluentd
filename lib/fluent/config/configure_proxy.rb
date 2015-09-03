@@ -68,24 +68,24 @@ module Fluent
 
         options = {
           param_name: other.param_name,
-          required: (other.required.nil? ? self.required : other.required),
-          multi: (other.multi.nil? ? self.multi : other.multi)
+          required: (other.required.nil? ? required : other.required),
+          multi: (other.multi.nil? ? multi : other.multi)
         }
         merged = self.class.new(other.name, options)
 
-        merged.argument = other.argument || self.argument
-        merged.params = self.params.merge(other.params)
-        merged.defaults = self.defaults.merge(other.defaults)
+        merged.argument = other.argument || argument
+        merged.params = params.merge(other.params)
+        merged.defaults = defaults.merge(other.defaults)
         merged.sections = {}
-        (self.sections.keys + other.sections.keys).uniq.each do |section_key|
-          self_section = self.sections[section_key]
+        (sections.keys + other.sections.keys).uniq.each do |section_key|
+          self_section = sections[section_key]
           other_section = other.sections[section_key]
           merged_section = if self_section && other_section
                              self_section.merge(other_section)
                            elsif self_section || other_section
                              self_section || other_section
                            else
-                             raise "BUG: both of self and other section are nil"
+                             fail 'BUG: both of self and other section are nil'
                            end
           merged.sections[section_key] = merged_section
         end
@@ -100,25 +100,25 @@ module Fluent
 
         options = {
           param_name: other.param_name,
-          required: (self.required.nil? ? other.required : self.required),
-          multi: (self.multi.nil? ? other.multi : self.multi),
-          final: true,
+          required: (required.nil? ? other.required : required),
+          multi: (multi.nil? ? other.multi : multi),
+          final: true
         }
         merged = self.class.new(other.name, options)
 
-        merged.argument = self.argument || other.argument
-        merged.params = other.params.merge(self.params)
-        merged.defaults = other.defaults.merge(self.defaults)
+        merged.argument = argument || other.argument
+        merged.params = other.params.merge(params)
+        merged.defaults = other.defaults.merge(defaults)
         merged.sections = {}
-        (self.sections.keys + other.sections.keys).uniq.each do |section_key|
-          self_section = self.sections[section_key]
+        (sections.keys + other.sections.keys).uniq.each do |section_key|
+          self_section = sections[section_key]
           other_section = other.sections[section_key]
           merged_section = if self_section && other_section
                              other_section.merge(self_section)
                            elsif self_section || other_section
                              self_section || other_section
                            else
-                             raise "BUG: both of self and other section are nil"
+                             fail 'BUG: both of self and other section are nil'
                            end
           merged.sections[section_key] = merged_section
         end
@@ -130,19 +130,19 @@ module Fluent
         name = name.to_sym
 
         opts = {}
-        args.each { |a|
+        args.each do |a|
           if a.is_a?(Symbol)
             opts[:type] = a
           elsif a.is_a?(Hash)
             opts.merge!(a)
           else
-            raise ArgumentError, "#{self.name}: wrong number of arguments (#{1 + args.length} for #{block ? 2 : 3})"
+            fail ArgumentError, "#{self.name}: wrong number of arguments (#{1 + args.length} for #{block ? 2 : 3})"
           end
-        }
+        end
 
         type = opts[:type]
         if block && type
-          raise ArgumentError, "#{self.name}: both of block and type cannot be specified"
+          fail ArgumentError, "#{self.name}: both of block and type cannot be specified"
         end
 
         begin
@@ -153,16 +153,14 @@ module Fluent
           raise ArgumentError, "#{self.name}: unknown config_argument type `#{type}'"
         end
 
-        if opts.has_key?(:default)
-          config_set_default(name, opts[:default])
-        end
+        config_set_default(name, opts[:default]) if opts.key?(:default)
 
         [name, block, opts]
       end
 
       def config_argument(name, *args, &block)
         if @argument
-          raise ArgumentError, "#{self.name}: config_argument called twice"
+          fail ArgumentError, "#{self.name}: config_argument called twice"
         end
         name, block, opts = parameter_configuration(name, *args, &block)
 
@@ -181,8 +179,8 @@ module Fluent
       def config_set_default(name, defval)
         name = name.to_sym
 
-        if @defaults.has_key?(name)
-          raise ArgumentError, "#{self.name}: default value specified twice for #{name}"
+        if @defaults.key?(name)
+          fail ArgumentError, "#{self.name}: default value specified twice for #{name}"
         end
 
         @defaults[name] = defval
@@ -191,13 +189,13 @@ module Fluent
 
       def config_section(name, *args, &block)
         unless block_given?
-          raise ArgumentError, "#{self.name}: config_section requires block parameter"
+          fail ArgumentError, "#{self.name}: config_section requires block parameter"
         end
         name = name.to_sym
 
         opts = {}
         unless args.empty? || args.size == 1 && args.first.is_a?(Hash)
-          raise ArgumentError, "#{self.name}: unknown config_section arguments: #{args.inspect}"
+          fail ArgumentError, "#{self.name}: unknown config_section arguments: #{args.inspect}"
         end
 
         sub_proxy = ConfigureProxy.new(name, *args)
@@ -211,4 +209,3 @@ module Fluent
     end
   end
 end
-

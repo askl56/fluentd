@@ -18,54 +18,53 @@ class ConfigTest < Test::Unit::TestCase
   end
 
   def prepare_config
-    write_config "#{TMP_DIR}/config_test_1.conf", %[
+    write_config "#{TMP_DIR}/config_test_1.conf", %(
       k1 root_config
       include dir/config_test_2.conf  #
       include #{TMP_DIR}/config_test_4.conf
       include file://#{TMP_DIR}/config_test_5.conf
       <include config.d/*.conf />
-    ]
-    write_config "#{TMP_DIR}/dir/config_test_2.conf", %[
+    )
+    write_config "#{TMP_DIR}/dir/config_test_2.conf", %(
       k2 relative_path_include
       include ../config_test_3.conf
-    ]
-    write_config "#{TMP_DIR}/config_test_3.conf", %[
+    )
+    write_config "#{TMP_DIR}/config_test_3.conf", %(
       k3 relative_include_in_included_file
-    ]
-    write_config "#{TMP_DIR}/config_test_4.conf", %[
+    )
+    write_config "#{TMP_DIR}/config_test_4.conf", %(
       k4 absolute_path_include
-    ]
-    write_config "#{TMP_DIR}/config_test_5.conf", %[
+    )
+    write_config "#{TMP_DIR}/config_test_5.conf", %(
       k5 uri_include
-    ]
-    write_config "#{TMP_DIR}/config.d/config_test_6.conf", %[
+    )
+    write_config "#{TMP_DIR}/config.d/config_test_6.conf", %(
       k6 wildcard_include_1
       <elem1 name>
         include normal_parameter
       </elem1>
-    ]
-    write_config "#{TMP_DIR}/config.d/config_test_7.conf", %[
+    )
+    write_config "#{TMP_DIR}/config.d/config_test_7.conf", %(
       k7 wildcard_include_2
-    ]
-    write_config "#{TMP_DIR}/config.d/config_test_8.conf", %[
+    )
+    write_config "#{TMP_DIR}/config.d/config_test_8.conf", %(
       <elem2 name>
         <include ../dir/config_test_9.conf />
       </elem2>
-    ]
-    write_config "#{TMP_DIR}/dir/config_test_9.conf", %[
+    )
+    write_config "#{TMP_DIR}/dir/config_test_9.conf", %(
       k9 embeded
       <elem3 name>
         nested nested_value
         include hoge
       </elem3>
-    ]
-    write_config "#{TMP_DIR}/config.d/00_config_test_8.conf", %[
+    )
+    write_config "#{TMP_DIR}/config.d/00_config_test_8.conf", %(
       k8 wildcard_include_3
       <elem4 name>
         include normal_parameter
       </elem4>
-    ]
-
+    )
   end
 
   def test_include
@@ -87,7 +86,7 @@ class ConfigTest < Test::Unit::TestCase
       'k5',
       'k8', # Because of the file name this comes first.
       'k6',
-      'k7',
+      'k7'
     ], c.keys
 
     elem1 = c.elements.find { |e| e.name == 'elem1' }
@@ -99,7 +98,7 @@ class ConfigTest < Test::Unit::TestCase
     assert_not_nil elem2
     assert_equal 'name', elem2.arg
     assert_equal 'embeded', elem2['k9']
-    assert !elem2.has_key?('include')
+    assert !elem2.key?('include')
 
     elem3 = elem2.elements.find { |e| e.name == 'elem3' }
     assert_not_nil elem3
@@ -108,7 +107,7 @@ class ConfigTest < Test::Unit::TestCase
   end
 
   def test_check_not_fetchd
-    write_config "#{TMP_DIR}/config_test_not_fetched.conf", %[
+    write_config "#{TMP_DIR}/config_test_not_fetched.conf", %(
       <match dummy>
        type          rewrite
        add_prefix    filtered
@@ -118,32 +117,32 @@ class ConfigTest < Test::Unit::TestCase
          replace
        </rule>
      </match>
-    ]
+    )
     root_conf  = read_config("#{TMP_DIR}/config_test_not_fetched.conf")
     match_conf = root_conf.elements.first
     rule_conf  = match_conf.elements.first
 
-    not_fetched = []; root_conf.check_not_fetched {|key, e| not_fetched << key }
-    assert_equal %w[type add_prefix key pattern replace], not_fetched
+    not_fetched = []; root_conf.check_not_fetched { |key, _e| not_fetched << key }
+    assert_equal %w(type add_prefix key pattern replace), not_fetched
 
-    not_fetched = []; match_conf.check_not_fetched {|key, e| not_fetched << key }
-    assert_equal %w[type add_prefix key pattern replace], not_fetched
+    not_fetched = []; match_conf.check_not_fetched { |key, _e| not_fetched << key }
+    assert_equal %w(type add_prefix key pattern replace), not_fetched
 
-    not_fetched = []; rule_conf.check_not_fetched {|key, e| not_fetched << key }
-    assert_equal %w[key pattern replace], not_fetched
+    not_fetched = []; rule_conf.check_not_fetched { |key, _e| not_fetched << key }
+    assert_equal %w(key pattern replace), not_fetched
 
     # accessing should delete
     match_conf['type']
     rule_conf['key']
 
-    not_fetched = []; root_conf.check_not_fetched {|key, e| not_fetched << key }
-    assert_equal %w[add_prefix pattern replace], not_fetched
+    not_fetched = []; root_conf.check_not_fetched { |key, _e| not_fetched << key }
+    assert_equal %w(add_prefix pattern replace), not_fetched
 
-    not_fetched = []; match_conf.check_not_fetched {|key, e| not_fetched << key }
-    assert_equal %w[add_prefix pattern replace], not_fetched
+    not_fetched = []; match_conf.check_not_fetched { |key, _e| not_fetched << key }
+    assert_equal %w(add_prefix pattern replace), not_fetched
 
-    not_fetched = []; rule_conf.check_not_fetched {|key, e| not_fetched << key }
-    assert_equal %w[pattern replace], not_fetched
+    not_fetched = []; rule_conf.check_not_fetched { |key, _e| not_fetched << key }
+    assert_equal %w(pattern replace), not_fetched
 
     # repeateadly accessing should not grow memory usage
     before_size = match_conf.unused.size
@@ -153,18 +152,17 @@ class ConfigTest < Test::Unit::TestCase
 
   def write_config(path, data)
     FileUtils.mkdir_p(File.dirname(path))
-    File.open(path, "w") {|f| f.write data }
+    File.open(path, 'w') { |f| f.write data }
   end
 
   def test_inline
-    prepare_config 
+    prepare_config
     opts = {
       config_path: "#{TMP_DIR}/config_test_1.conf",
       inline_config: "<source>\n  type http\n  port 2222\n </source>"
     }
     assert_nothing_raised do
       Fluent::Supervisor.new(opts)
-    end  
+    end
   end
 end
-

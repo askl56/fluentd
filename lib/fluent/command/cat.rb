@@ -19,7 +19,7 @@ require 'fluent/env'
 
 op = OptionParser.new
 
-op.banner += " <tag>"
+op.banner += ' <tag>'
 
 port = Fluent::DEFAULT_LISTEN_PORT
 host = '127.0.0.1'
@@ -30,43 +30,43 @@ config_path = Fluent::DEFAULT_CONFIG_PATH
 format = 'json'
 message_key = 'message'
 
-op.on('-p', '--port PORT', "fluent tcp port (default: #{port})", Integer) {|i|
+op.on('-p', '--port PORT', "fluent tcp port (default: #{port})", Integer) do|i|
   port = i
-}
+end
 
-op.on('-h', '--host HOST', "fluent host (default: #{host})") {|s|
+op.on('-h', '--host HOST', "fluent host (default: #{host})") do|s|
   host = s
-}
+end
 
-op.on('-u', '--unix', "use unix socket instead of tcp", TrueClass) {|b|
+op.on('-u', '--unix', 'use unix socket instead of tcp', TrueClass) do|b|
   unix = b
-}
+end
 
-op.on('-s', '--socket PATH', "unix socket path (default: #{socket_path})") {|s|
+op.on('-s', '--socket PATH', "unix socket path (default: #{socket_path})") do|s|
   socket_path = s
-}
+end
 
-op.on('-f', '--format FORMAT', "input format (default: #{format})") {|s|
+op.on('-f', '--format FORMAT', "input format (default: #{format})") do|s|
   format = s
-}
+end
 
-op.on('--json', "same as: -f json", TrueClass) {|b|
+op.on('--json', 'same as: -f json', TrueClass) do|_b|
   format = 'json'
-}
+end
 
-op.on('--msgpack', "same as: -f msgpack", TrueClass) {|b|
+op.on('--msgpack', 'same as: -f msgpack', TrueClass) do|_b|
   format = 'msgpack'
-}
+end
 
-op.on('--none', "same as: -f none", TrueClass) {|b|
+op.on('--none', 'same as: -f none', TrueClass) do|_b|
   format = 'none'
-}
+end
 
-op.on('--message-key KEY', "key field for none format (default: #{message_key})") {|s|
+op.on('--message-key KEY', "key field for none format (default: #{message_key})") do|s|
   message_key = s
-}
+end
 
-(class<<self;self;end).module_eval do
+(class<<self; self; end).module_eval do
   define_method(:usage) do |msg|
     puts op.to_s
     puts "error: #{msg}" if msg
@@ -77,23 +77,19 @@ end
 begin
   op.parse!(ARGV)
 
-  if ARGV.length != 1
-    usage nil
-  end
+  usage nil if ARGV.length != 1
 
   tag = ARGV.shift
 
 rescue
-  usage $!.to_s
+  usage $ERROR_INFO.to_s
 end
-
 
 require 'thread'
 require 'monitor'
 require 'socket'
 require 'yajl'
 require 'msgpack'
-
 
 class Writer
   include MonitorMixin
@@ -127,24 +123,24 @@ class Writer
     @socket = false
 
     @socket_time = Time.now.to_i
-    @socket_ttl = 10  # TODO
+    @socket_ttl = 10 # TODO
     @error_history = []
 
     @pending = []
-    @pending_limit = 1024  # TODO
+    @pending_limit = 1024 # TODO
     @retry_wait = 1
-    @retry_limit = 5  # TODO
+    @retry_limit = 5 # TODO
 
     super()
   end
 
   def write(record)
     if record.class != Hash
-      raise ArgumentError, "Input must be a map (got #{record.class})"
+      fail ArgumentError, "Input must be a map (got #{record.class})"
     end
 
     entry = [Time.now.to_i, record]
-    synchronize {
+    synchronize do
       unless write_impl([entry])
         # write failed
         @pending.push(entry)
@@ -155,13 +151,13 @@ class Writer
           abort_message(time, record)
         end
       end
-    }
+    end
   end
 
   def on_timer
     now = Time.now.to_i
 
-    synchronize {
+    synchronize do
       unless @pending.empty?
         # flush pending records
         if write_impl(@pending)
@@ -174,7 +170,7 @@ class Writer
         # socket is not used @socket_ttl seconds
         close
       end
-    }
+    end
   end
 
   def close
@@ -193,33 +189,28 @@ class Writer
   end
 
   private
+
   def write_impl(array)
     socket = get_socket
-    unless socket
-      return false
-    end
+    return false unless socket
 
     begin
       socket.write [@tag, array].to_msgpack
       socket.flush
     rescue
-      $stderr.puts "write failed: #{$!}"
+      $stderr.puts "write failed: #{$ERROR_INFO}"
       close
       return false
     end
 
-    return true
+    true
   end
 
   def get_socket
-    unless @socket
-      unless try_connect
-        return nil
-      end
-    end
+    return nil unless try_connect unless @socket
 
     @socket_time = Time.now.to_i
-    return @socket
+    @socket
   end
 
   def try_connect
@@ -227,10 +218,8 @@ class Writer
 
     unless @error_history.empty?
       # wait before re-connecting
-      wait = @retry_wait * (2 ** (@error_history.size-1))
-      if now <= @socket_time + wait
-        return false
-      end
+      wait = @retry_wait * (2**(@error_history.size - 1))
+      return false if now <= @socket_time + wait
     end
 
     begin
@@ -239,15 +228,15 @@ class Writer
       return true
 
     rescue
-      $stderr.puts "connect failed: #{$!}"
-      @error_history << $!
+      $stderr.puts "connect failed: #{$ERROR_INFO}"
+      @error_history << $ERROR_INFO
       @socket_time = now
 
       if @retry_limit < @error_history.size
         # abort all pending records
-        @pending.each {|(time, record)|
+        @pending.each do|(time, record)|
           abort_message(time, record)
-        }
+        end
         @pending.clear
         @error_history.clear
       end
@@ -261,15 +250,14 @@ class Writer
   end
 end
 
-
 if unix
-  connector = Proc.new {
+  connector = proc do
     UNIXSocket.open(socket_path)
-  }
+  end
 else
-  connector = Proc.new {
+  connector = proc do
     TCPSocket.new(host, port)
-  }
+  end
 end
 
 w = Writer.new(tag, connector)
@@ -283,19 +271,19 @@ when 'json'
       w.write(record)
     end
   rescue
-    $stderr.puts $!
+    $stderr.puts $ERROR_INFO
     exit 1
   end
 
 when 'msgpack'
   begin
     u = MessagePack::Unpacker.new($stdin)
-    u.each {|record|
+    u.each do|record|
       w.write(record)
-    }
+    end
   rescue EOFError
   rescue
-    $stderr.puts $!
+    $stderr.puts $ERROR_INFO
     exit 1
   end
 
@@ -306,7 +294,7 @@ when 'none'
       w.write(record)
     end
   rescue
-    $stderr.puts $!
+    $stderr.puts $ERROR_INFO
     exit 1
   end
 
@@ -314,4 +302,3 @@ else
   $stderr.puts "Unknown format '#{format}'"
   exit 1
 end
-

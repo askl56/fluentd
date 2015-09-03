@@ -23,7 +23,7 @@ module Fluent
     config_param :tag, :string
     config_param :rate, :integer, default: 1
     config_param :auto_increment_key, :string, default: nil
-    config_param :dummy, default: [{"message"=>"dummy"}] do |val|
+    config_param :dummy, default: [{ 'message' => 'dummy' }] do |val|
       begin
         parsed = JSON.parse(val)
       rescue JSON::ParserError => e
@@ -34,7 +34,7 @@ module Fluent
       end
       dummy = parsed.is_a?(Array) ? parsed : [parsed]
       dummy.each_with_index do |e, i|
-        raise Fluent::ConfigError, "#{i}th element of dummy, #{e}, is not a hash" unless e.is_a?(Hash)
+        fail Fluent::ConfigError, "#{i}th element of dummy, #{e}, is not a hash" unless e.is_a?(Hash)
       end
       dummy
     end
@@ -63,19 +63,17 @@ module Fluent
       while @running
         current_time = Time.now.to_i
         BIN_NUM.times do
-          break unless (@running && Time.now.to_i <= current_time)
+          break unless @running && Time.now.to_i <= current_time
           wait(0.1) { emit(batch_num) }
         end
         emit(residual_num)
         # wait for next second
-        while @running && Time.now.to_i <= current_time
-          sleep 0.01
-        end
+        sleep 0.01 while @running && Time.now.to_i <= current_time
       end
     end
 
     def emit(num)
-      num.times { router.emit(@tag, Fluent::Engine.now, generate()) }
+      num.times { router.emit(@tag, Fluent::Engine.now, generate) }
     end
 
     def generate

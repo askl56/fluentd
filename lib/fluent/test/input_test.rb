@@ -48,29 +48,29 @@ module Fluent
 
       def emits
         all = []
-        @emit_streams.each {|tag,events|
-          events.each {|time,record|
+        @emit_streams.each do|tag, events|
+          events.each do|time, record|
             all << [tag, time, record]
-          }
-        }
+          end
+        end
         all
       end
 
       def events
         all = []
-        @emit_streams.each {|tag,events|
+        @emit_streams.each do|_tag, events|
           all.concat events
-        }
+        end
         all
       end
 
       def records
         all = []
-        @emit_streams.each {|tag,events|
-          events.each {|time,record|
+        @emit_streams.each do|_tag, events|
+          events.each do|_time, record|
             all << record
-          }
-        }
+          end
+        end
         all
       end
 
@@ -93,29 +93,30 @@ module Fluent
         return true unless @run_post_conditions
 
         # Should stop running if all of the post conditions are true.
-        return true if @run_post_conditions.all? {|proc| proc.call }
+        return true if @run_post_conditions.all?(&:call)
 
         # Should stop running if any of the breaking conditions is true.
         # In this case, some post conditions may be not true.
-        return true if @run_breaking_conditions && @run_breaking_conditions.any? {|proc| proc.call }
+        return true if @run_breaking_conditions && @run_breaking_conditions.any?(&:call)
 
         false
       end
 
       def run(&block)
         m = method(:emit_stream)
-        Engine.define_singleton_method(:emit_stream) {|tag,es|
+        Engine.define_singleton_method(:emit_stream) do|tag, es|
           m.call(tag, es)
-        }
-        instance.router.define_singleton_method(:emit_stream) {|tag,es|
+        end
+        instance.router.define_singleton_method(:emit_stream) do|tag, es|
           m.call(tag, es)
-        }
-        super {
+        end
+        super do
           block.call if block
 
           if @expected_emits_length || @expects || @run_post_conditions
             # counters for emits and emit_streams
-            i, j = 0, 0
+            i = 0
+            j = 0
 
             # Events of expected length will be emitted at the end.
             max_length = @expected_emits_length
@@ -147,11 +148,12 @@ module Fluent
             end
             assert_equal(@expects.length, i) if @expects
           end
-        }
+        end
         self
       end
 
       private
+
       def emit_stream(tag, es)
         @emit_streams << [tag, es.to_a]
       end

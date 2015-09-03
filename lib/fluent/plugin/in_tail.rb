@@ -38,14 +38,14 @@ module Fluent
     def configure(conf)
       super
 
-      @paths = @path.split(',').map {|path| path.strip }
+      @paths = @path.split(',').map(&:strip)
       if @paths.empty?
-        raise ConfigError, "tail: 'path' parameter is required on tail input"
+        fail ConfigError, "tail: 'path' parameter is required on tail input"
       end
 
       unless @pos_file
         $log.warn "'pos_file PATH' parameter is not set to a 'tail' source."
-        $log.warn "this parameter is highly recommended to save the position to resume tailing."
+        $log.warn 'this parameter is highly recommended to save the position to resume tailing.'
       end
 
       configure_parser(conf)
@@ -76,7 +76,7 @@ module Fluent
 
     def start
       if @pos_file
-        @pf_file = File.open(@pos_file, File::RDWR|File::CREAT, DEFAULT_FILE_PERMISSION)
+        @pf_file = File.open(@pos_file, File::RDWR | File::CREAT, DEFAULT_FILE_PERMISSION)
         @pf_file.sync = true
         @pf = PositionFile.parse(@pf_file)
       end
@@ -103,7 +103,7 @@ module Fluent
       paths = []
 
       excluded = @exclude_path.map { |path| path = date.strftime(path); path.include?('*') ? Dir.glob(path) : path }.flatten.uniq
-      @paths.each { |path|
+      @paths.each do |path|
         path = date.strftime(path)
         if path.include?('*')
           paths += Dir.glob(path)
@@ -111,7 +111,7 @@ module Fluent
           # When file is not created yet, Dir.glob returns an empty array. So just add when path is static.
           paths << path
         end
-      }
+      end
       paths - excluded
     end
 
@@ -138,7 +138,7 @@ module Fluent
     end
 
     def start_watchers(paths)
-      paths.each { |path|
+      paths.each do |path|
         pe = nil
         if @pf
           pe = @pf[path]
@@ -152,11 +152,11 @@ module Fluent
         end
 
         @tails[path] = setup_watcher(path, pe)
-      }
+      end
     end
 
     def stop_watchers(paths, immediate = false, unwatched = false)
-      paths.each { |path|
+      paths.each do |path|
         tw = @tails.delete(path)
         if tw
           tw.unwatched = unwatched
@@ -166,7 +166,7 @@ module Fluent
             close_watcher_after_rotate_wait(tw)
           end
         end
-      }
+      end
     end
 
     # refresh_watchers calls @tails.keys so we don't use stop_watcher -> start_watcher sequence for safety.
@@ -196,7 +196,7 @@ module Fluent
     def flush_buffer(tw)
       if lb = tw.line_buffer
         lb.chomp!
-        @parser.parse(lb) { |time, record|
+        @parser.parse(lb) do |time, record|
           if time && record
             tag = if @tag_prefix || @tag_suffix
                     @tag_prefix + tw.tag + @tag_suffix
@@ -207,14 +207,14 @@ module Fluent
           else
             log.warn "got incomplete line at shutdown from #{tw.path}: #{lb.inspect}"
           end
-        }
+        end
       end
     end
 
     def run
       @loop.run
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
@@ -235,26 +235,24 @@ module Fluent
     end
 
     def convert_line_to_event(line, es)
-      begin
-        line.chomp!  # remove \n
-        @parser.parse(line) { |time, record|
-          if time && record
-            es.add(time, record)
-          else
-            log.warn "pattern not match: #{line.inspect}"
-          end
-        }
-      rescue => e
-        log.warn line.dump, error: e.to_s
-        log.debug_backtrace(e.backtrace)
+      line.chomp! # remove \n
+      @parser.parse(line) do |time, record|
+        if time && record
+          es.add(time, record)
+        else
+          log.warn "pattern not match: #{line.inspect}"
+        end
       end
+    rescue => e
+      log.warn line.dump, error: e.to_s
+      log.debug_backtrace(e.backtrace)
     end
 
-    def parse_singleline(lines, tail_watcher)
+    def parse_singleline(lines, _tail_watcher)
       es = MultiEventStream.new
-      lines.each { |line|
+      lines.each do |line|
         convert_line_to_event(line, es)
-      }
+      end
       es
     end
 
@@ -262,11 +260,9 @@ module Fluent
       lb = tail_watcher.line_buffer
       es = MultiEventStream.new
       if @parser.has_firstline?
-        lines.each { |line|
+        lines.each do |line|
           if @parser.firstline?(line)
-            if lb
-              convert_line_to_event(lb, es)
-            end
+            convert_line_to_event(lb, es) if lb
             lb = line
           else
             if lb.nil?
@@ -275,17 +271,17 @@ module Fluent
               lb << line
             end
           end
-        }
+        end
       else
         lb ||= ''
         lines.each do |line|
           lb << line
-          @parser.parse(lb) { |time, record|
+          @parser.parse(lb) do |time, record|
             if time && record
               convert_line_to_event(lb, es)
               lb = ''
             end
-          }
+          end
         end
       end
       tail_watcher.line_buffer = lb
@@ -312,7 +308,7 @@ module Fluent
 
       attr_reader :path
       attr_accessor :line_buffer
-      attr_accessor :unwatched  # This is used for removing position entry from PositionFile
+      attr_accessor :unwatched # This is used for removing position entry from PositionFile
 
       def tag
         @parsed_tag ||= @path.tr('/', '.').gsub(/\.+/, '.').gsub(/^\./, '')
@@ -348,7 +344,7 @@ module Fluent
       end
 
       def on_rotate(io)
-        if @io_handler == nil
+        if @io_handler.nil?
           if io
             # first time
             stat = io.stat
@@ -385,7 +381,7 @@ module Fluent
           end
         else
           log_msg = "detected rotation of #{@path}"
-          log_msg << "; waiting #{@rotate_wait} seconds" if @io_handler.io  # wait rotate_time if previous file is exist
+          log_msg << "; waiting #{@rotate_wait} seconds" if @io_handler.io # wait rotate_time if previous file is exist
           @log.info log_msg
 
           if io
@@ -431,8 +427,8 @@ module Fluent
         def on_timer
           @callback.call
         rescue
-          # TODO log?
-          @log.error $!.to_s
+          # TODO: log?
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
         end
       end
@@ -444,11 +440,11 @@ module Fluent
           super(path)
         end
 
-        def on_change(prev, cur)
+        def on_change(_prev, _cur)
           @callback.call
         rescue
-          # TODO log?
-          @log.error $!.to_s
+          # TODO: log?
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
         end
       end
@@ -492,7 +488,7 @@ module Fluent
             read_more = false
 
             begin
-              while true
+              loop do
                 if @buffer.empty?
                   @io.read_nonblock(2048, @buffer)
                 else
@@ -517,7 +513,7 @@ module Fluent
           end while read_more
 
         rescue
-          @log.error $!.to_s
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
           close
         end
@@ -545,7 +541,7 @@ module Fluent
         def initialize(path, log, &on_rotate)
           @path = path
           @inode = nil
-          @fsize = -1  # first
+          @fsize = -1 # first
           @on_rotate = on_rotate
           @log = log
         end
@@ -576,12 +572,11 @@ module Fluent
           end
 
         rescue
-          @log.error $!.to_s
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
         end
       end
     end
-
 
     class PositionFile
       UNWATCHED_POSITION = 0xffffffffffffffff
@@ -612,7 +607,7 @@ module Fluent
 
         map = {}
         file.pos = 0
-        file.each_line {|line|
+        file.each_line do|line|
           m = /^([^\t]+)\t([0-9a-fA-F]+)\t([0-9a-fA-F]+)/.match(line)
           next unless m
           path = m[1]
@@ -620,14 +615,14 @@ module Fluent
           ino = m[3].to_i(16)
           seek = file.pos - line.bytesize + path.bytesize + 1
           map[path] = FilePositionEntry.new(file, seek)
-        }
+        end
         new(file, map, file.pos)
       end
 
       # Clean up unwatched file entries
       def self.compact(file)
         file.pos = 0
-        existent_entries = file.each_line.map { |line|
+        existent_entries = file.each_line.map do |line|
           m = /^([^\t]+)\t([0-9a-fA-F]+)\t([0-9a-fA-F]+)/.match(line)
           next unless m
           path = m[1]
@@ -635,7 +630,7 @@ module Fluent
           ino = m[3].to_i(16)
           # 32bit inode converted to 64bit at this phase
           pos == UNWATCHED_POSITION ? nil : ("%s\t%016x\t%016x\n" % [path, pos, ino])
-        }.compact
+        end.compact
 
         file.pos = 0
         file.truncate(0)
@@ -664,7 +659,7 @@ module Fluent
 
       def update_pos(pos)
         @file.pos = @seek
-        @file.write "%016x" % pos
+        @file.write '%016x' % pos
       end
 
       def read_inode
@@ -723,14 +718,14 @@ module Fluent
     def configure(conf)
       super
 
-      @paths = @path.split(',').map {|path| path.strip }
+      @paths = @path.split(',').map(&:strip)
       if @paths.empty?
-        raise ConfigError, "tail: 'path' parameter is required on tail input"
+        fail ConfigError, "tail: 'path' parameter is required on tail input"
       end
 
       unless @pos_file
         $log.warn "'pos_file PATH' parameter is not set to a 'tail' source."
-        $log.warn "this parameter is highly recommended to save the position to resume tailing."
+        $log.warn 'this parameter is highly recommended to save the position to resume tailing.'
       end
 
       configure_parser(conf)
@@ -743,28 +738,26 @@ module Fluent
 
     def start
       if @pos_file
-        @pf_file = File.open(@pos_file, File::RDWR|File::CREAT, DEFAULT_FILE_PERMISSION)
+        @pf_file = File.open(@pos_file, File::RDWR | File::CREAT, DEFAULT_FILE_PERMISSION)
         @pf_file.sync = true
         @pf = PositionFile.parse(@pf_file)
       end
 
       @loop = Coolio::Loop.new
-      @tails = @paths.map {|path|
+      @tails = @paths.map do|path|
         pe = @pf ? @pf[path] : MemoryPositionEntry.new
         tw = TailWatcher.new(path, @rotate_wait, pe, &method(:receive_lines))
         tw.log = log
         tw
-      }
-      @tails.each {|tail|
+      end
+      @tails.each do|tail|
         tail.attach(@loop)
-      }
+      end
       @thread = Thread.new(&method(:run))
     end
 
     def shutdown
-      @tails.each {|tail|
-        tail.close
-      }
+      @tails.each(&:close)
       @loop.stop
       @thread.join
       @pf_file.close if @pf_file
@@ -773,15 +766,15 @@ module Fluent
     def run
       @loop.run
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
     def receive_lines(lines)
       es = MultiEventStream.new
-      lines.each {|line|
+      lines.each do|line|
         begin
-          line.chomp!  # remove \n
+          line.chomp! # remove \n
           time, record = parse_line(line)
           if time && record
             es.add(time, record)
@@ -789,10 +782,10 @@ module Fluent
             log.warn "pattern not match: #{line.inspect}"
           end
         rescue
-          log.warn line.dump, error:$!.to_s
+          log.warn line.dump, error: $ERROR_INFO.to_s
           log.debug_backtrace
         end
-      }
+      end
 
       unless es.empty?
         begin
@@ -804,7 +797,7 @@ module Fluent
     end
 
     def parse_line(line)
-      return @parser.parse(line)
+      @parser.parse(line)
     end
 
     class TailWatcher
@@ -848,10 +841,10 @@ module Fluent
       end
 
       def close
-        @rotate_queue.reject! {|req|
+        @rotate_queue.reject! do|req|
           req.io.close
           true
-        }
+        end
         detach
       end
 
@@ -891,7 +884,7 @@ module Fluent
       end
 
       def on_rotate(io)
-        if @io_handler == nil
+        if @io_handler.nil?
           if io
             # first time
             stat = io.stat
@@ -924,11 +917,9 @@ module Fluent
           end
 
         else
-          if io && @rotate_queue.find {|req| req.io == io }
-            return
-          end
+          return if io && @rotate_queue.find { |req| req.io == io }
           last_io = @rotate_queue.empty? ? @io_handler.io : @rotate_queue.last.io
-          if last_io == nil
+          if last_io.nil?
             log.info "detected rotation of #{@path}"
             # rotate imeediately if previous file is nil
             wait = 0
@@ -953,8 +944,8 @@ module Fluent
         def on_timer
           @callback.call
         rescue
-          # TODO log?
-          @log.error $!.to_s
+          # TODO: log?
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
         end
       end
@@ -968,11 +959,11 @@ module Fluent
 
         attr_accessor :log
 
-        def on_change(prev, cur)
+        def on_change(_prev, _cur)
           @callback.call
         rescue
-          # TODO log?
-          @log.error $!.to_s
+          # TODO: log?
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
         end
       end
@@ -1015,7 +1006,7 @@ module Fluent
             read_more = false
 
             begin
-              while true
+              loop do
                 if @buffer.empty?
                   @io.read_nonblock(2048, @buffer)
                 else
@@ -1041,7 +1032,7 @@ module Fluent
           end while read_more
 
         rescue
-          @log.error $!.to_s
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
           close
         end
@@ -1069,7 +1060,7 @@ module Fluent
         def initialize(path, &on_rotate)
           @path = path
           @inode = nil
-          @fsize = -1  # first
+          @fsize = -1 # first
           @on_rotate = on_rotate
           @log = $log
         end
@@ -1102,12 +1093,11 @@ module Fluent
           end
 
         rescue
-          @log.error $!.to_s
+          @log.error $ERROR_INFO.to_s
           @log.error_backtrace
         end
       end
     end
-
 
     class PositionFile
       def initialize(file, map, last_pos)
@@ -1134,7 +1124,7 @@ module Fluent
       def self.parse(file)
         map = {}
         file.pos = 0
-        file.each_line {|line|
+        file.each_line do|line|
           m = /^([^\t]+)\t([0-9a-fA-F]+)\t([0-9a-fA-F]+)/.match(line)
           next unless m
           path = m[1]
@@ -1142,7 +1132,7 @@ module Fluent
           ino = m[3].to_i(16)
           seek = file.pos - line.bytesize + path.bytesize + 1
           map[path] = FilePositionEntry.new(file, seek)
-        }
+        end
         new(file, map, file.pos)
       end
     end
@@ -1169,7 +1159,7 @@ module Fluent
 
       def update_pos(pos)
         @file.pos = @seek
-        @file.write "%016x" % pos
+        @file.write '%016x' % pos
       end
 
       def read_inode

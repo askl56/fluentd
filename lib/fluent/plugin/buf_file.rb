@@ -16,7 +16,7 @@
 
 module Fluent
   class FileBufferChunk < BufferChunk
-    def initialize(key, path, unique_id, mode="a+", symlink_path = nil)
+    def initialize(key, path, unique_id, mode = 'a+', symlink_path = nil)
       super(key)
       @path = path
       @unique_id = unique_id
@@ -33,9 +33,7 @@ module Fluent
       @size += data.bytesize
     end
 
-    def size
-      @size
-    end
+    attr_reader :size
 
     def empty?
       @size == 0
@@ -44,14 +42,12 @@ module Fluent
     def close
       stat = @file.stat
       @file.close
-      if stat.size == 0
-        File.unlink(@path)
-      end
+      File.unlink(@path) if stat.size == 0
     end
 
     def purge
       @file.close
-      File.unlink(@path) rescue nil  # TODO rescue?
+      File.unlink(@path) rescue nil # TODO: rescue?
     end
 
     def read
@@ -59,7 +55,7 @@ module Fluent
       @file.read
     end
 
-    def open(&block)
+    def open(&_block)
       @file.pos = 0
       yield @file
     end
@@ -93,8 +89,8 @@ module Fluent
     def configure(conf)
       super
 
-      if @@buffer_paths.has_key?(@buffer_path)
-        raise ConfigError, "Other '#{@@buffer_paths[@buffer_path]}' plugin already use same buffer_path: type = #{conf['@type'] || conf['type']}, buffer_path = #{@buffer_path}"
+      if @@buffer_paths.key?(@buffer_path)
+        fail ConfigError, "Other '#{@@buffer_paths[@buffer_path]}' plugin already use same buffer_path: type = #{conf['@type'] || conf['type']}, buffer_path = #{@buffer_path}"
       else
         @@buffer_paths[@buffer_path] = conf['@type'] || conf['type']
       end
@@ -103,14 +99,13 @@ module Fluent
         @buffer_path_prefix = @buffer_path[0, pos]
         @buffer_path_suffix = @buffer_path[(pos + 1)..-1]
       else
-        @buffer_path_prefix = @buffer_path + "."
-        @buffer_path_suffix = ".log"
+        @buffer_path_prefix = @buffer_path + '.'
+        @buffer_path_suffix = '.log'
       end
-
     end
 
     def start
-      FileUtils.mkdir_p File.dirname(@buffer_path_prefix + "path"), mode: DEFAULT_DIR_PERMISSION
+      FileUtils.mkdir_p File.dirname(@buffer_path_prefix + 'path'), mode: DEFAULT_DIR_PERMISSION
       super
     end
 
@@ -120,16 +115,16 @@ module Fluent
 
     def new_chunk(key)
       encoded_key = encode_key(key)
-      path, tsuffix = make_path(encoded_key, "b")
+      path, tsuffix = make_path(encoded_key, 'b')
       unique_id = tsuffix_to_unique_id(tsuffix)
-      FileBufferChunk.new(key, path, unique_id, "a+", @symlink_path)
+      FileBufferChunk.new(key, path, unique_id, 'a+', @symlink_path)
     end
 
     def resume
       maps = []
       queues = []
 
-      Dir.glob("#{@buffer_path_prefix}*#{@buffer_path_suffix}") {|path|
+      Dir.glob("#{@buffer_path_prefix}*#{@buffer_path_suffix}") do|path|
         identifier_part = chunk_identifier_in_path(path)
         if m = PATH_MATCH.match(identifier_part)
           key = decode_key(m[1])
@@ -139,29 +134,29 @@ module Fluent
           unique_id = tsuffix_to_unique_id(tsuffix)
 
           if bq == 'b'
-            chunk = FileBufferChunk.new(key, path, unique_id, "a+")
+            chunk = FileBufferChunk.new(key, path, unique_id, 'a+')
             maps << [timestamp, chunk]
           elsif bq == 'q'
-            chunk = FileBufferChunk.new(key, path, unique_id, "r")
+            chunk = FileBufferChunk.new(key, path, unique_id, 'r')
             queues << [timestamp, chunk]
           end
         end
-      }
+      end
 
       map = {}
-      maps.sort_by {|(timestamp,chunk)|
+      maps.sort_by do|(timestamp, _chunk)|
         timestamp
-      }.each {|(timestamp,chunk)|
+      end.each do|(_timestamp, chunk)|
         map[chunk.key] = chunk
-      }
+      end
 
-      queue = queues.sort_by {|(timestamp,chunk)|
+      queue = queues.sort_by do|(timestamp, _chunk)|
         timestamp
-      }.map {|(timestamp,chunk)|
+      end.map do|(_timestamp, chunk)|
         chunk
-      }
+      end
 
-      return queue, map
+      [queue, map]
     end
 
     def chunk_identifier_in_path(path)
@@ -176,7 +171,7 @@ module Fluent
       identifier_part = chunk_identifier_in_path(path)
 
       m = PATH_MATCH.match(identifier_part)
-      encoded_key = m ? m[1] : ""
+      encoded_key = m ? m[1] : ''
       tsuffix = m[3]
       npath = "#{@buffer_path_prefix}#{encoded_key}.q#{tsuffix}#{@buffer_path_suffix}"
 
@@ -186,9 +181,9 @@ module Fluent
     def before_shutdown(out)
       if @flush_at_shutdown
         synchronize do
-          @map.each_key {|key|
+          @map.each_key do|key|
             push(key)
-          }
+          end
           while pop(out)
           end
         end
@@ -212,12 +207,12 @@ module Fluent
       timestamp = ((now.to_i * 1000 * 1000 + now.usec) << 12 | rand(0xfff))
       tsuffix = timestamp.to_s(16)
       path = "#{@buffer_path_prefix}#{encoded_key}.#{bq}#{tsuffix}#{@buffer_path_suffix}"
-      return path, tsuffix
+      [path, tsuffix]
     end
 
     def tsuffix_to_unique_id(tsuffix)
       # why *2 ? frsyuki said that I forgot why completely.
-      tsuffix.scan(/../).map {|x| x.to_i(16) }.pack('C*') * 2
+      tsuffix.scan(/../).map { |x| x.to_i(16) }.pack('C*') * 2
     end
   end
 end

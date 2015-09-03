@@ -43,17 +43,17 @@ module Fluent
 
     def self.str_to_level(log_level_str)
       case log_level_str.downcase
-      when "trace" then LEVEL_TRACE
-      when "debug" then LEVEL_DEBUG
-      when "info"  then LEVEL_INFO
-      when "warn"  then LEVEL_WARN
-      when "error" then LEVEL_ERROR
-      when "fatal" then LEVEL_FATAL
-      else raise "Unknown log level: level = #{log_level_str}"
+      when 'trace' then LEVEL_TRACE
+      when 'debug' then LEVEL_DEBUG
+      when 'info'  then LEVEL_INFO
+      when 'warn'  then LEVEL_WARN
+      when 'error' then LEVEL_ERROR
+      when 'fatal' then LEVEL_FATAL
+      else fail "Unknown log level: level = #{log_level_str}"
       end
     end
 
-    def initialize(out=STDERR, level=LEVEL_TRACE, opts={})
+    def initialize(out = STDERR, level = LEVEL_TRACE, opts = {})
       @out = out
       @level = level
       @debug_mode = false
@@ -65,7 +65,7 @@ module Fluent
       # TODO: This variable name is unclear so we should change to better name.
       @threads_exclude_events = []
 
-      if opts.has_key?(:suppress_repeated_stacktrace)
+      if opts.key?(:suppress_repeated_stacktrace)
         @suppress_repeated_stacktrace = opts[:suppress_repeated_stacktrace]
       end
     end
@@ -75,12 +75,12 @@ module Fluent
     attr_accessor :tag
     attr_accessor :time_format
 
-    def enable_debug(b=true)
+    def enable_debug(b = true)
       @debug_mode = b
       self
     end
 
-    def enable_event(b=true)
+    def enable_event(b = true)
       @self_event = b
       self
     end
@@ -89,7 +89,7 @@ module Fluent
       !@color_reset.empty?
     end
 
-    def enable_color(b=true)
+    def enable_color(b = true)
       if b
         @color_trace = TTYColor::BLUE
         @color_debug = TTYColor::WHITE
@@ -129,9 +129,9 @@ module Fluent
     rescue
       # logger should not raise an exception. This rescue prevents unexpected behaviour.
     end
-    alias TRACE trace
+    alias_method :TRACE, :trace
 
-    def trace_backtrace(backtrace=$!.backtrace)
+    def trace_backtrace(backtrace = $ERROR_INFO.backtrace)
       dump_stacktrace(backtrace, LEVEL_TRACE)
     end
 
@@ -147,9 +147,9 @@ module Fluent
       puts [@color_debug, caller_line(time, @depth_offset, LEVEL_DEBUG), msg, @color_reset].join
     rescue
     end
-    alias DEBUG debug
+    alias_method :DEBUG, :debug
 
-    def debug_backtrace(backtrace=$!.backtrace)
+    def debug_backtrace(backtrace = $ERROR_INFO.backtrace)
       dump_stacktrace(backtrace, LEVEL_DEBUG)
     end
 
@@ -165,9 +165,9 @@ module Fluent
       puts [@color_info, caller_line(time, @depth_offset, LEVEL_INFO), msg, @color_reset].join
     rescue
     end
-    alias INFO info
+    alias_method :INFO, :info
 
-    def info_backtrace(backtrace=$!.backtrace)
+    def info_backtrace(backtrace = $ERROR_INFO.backtrace)
       dump_stacktrace(backtrace, LEVEL_INFO)
     end
 
@@ -183,9 +183,9 @@ module Fluent
       puts [@color_warn, caller_line(time, @depth_offset, LEVEL_WARN), msg, @color_reset].join
     rescue
     end
-    alias WARN warn
+    alias_method :WARN, :warn
 
-    def warn_backtrace(backtrace=$!.backtrace)
+    def warn_backtrace(backtrace = $ERROR_INFO.backtrace)
       dump_stacktrace(backtrace, LEVEL_WARN)
     end
 
@@ -201,9 +201,9 @@ module Fluent
       puts [@color_error, caller_line(time, @depth_offset, LEVEL_ERROR), msg, @color_reset].join
     rescue
     end
-    alias ERROR error
+    alias_method :ERROR, :error
 
-    def error_backtrace(backtrace=$!.backtrace)
+    def error_backtrace(backtrace = $ERROR_INFO.backtrace)
       dump_stacktrace(backtrace, LEVEL_ERROR)
     end
 
@@ -219,9 +219,9 @@ module Fluent
       puts [@color_fatal, caller_line(time, @depth_offset, LEVEL_FATAL), msg, @color_reset].join
     rescue
     end
-    alias FATAL fatal
+    alias_method :FATAL, :fatal
 
-    def fatal_backtrace(backtrace=$!.backtrace)
+    def fatal_backtrace(backtrace = $ERROR_INFO.backtrace)
       dump_stacktrace(backtrace, LEVEL_FATAL)
     end
 
@@ -250,11 +250,11 @@ module Fluent
       time = Time.now
       line = caller_line(time, 5, level)
       if @suppress_repeated_stacktrace && (Thread.current[:last_repeated_stacktrace] == backtrace)
-        puts ["  ", line, 'suppressed same stacktrace'].join
+        puts ['  ', line, 'suppressed same stacktrace'].join
       else
-        backtrace.each { |msg|
-          puts ["  ", line, msg].join
-        }
+        backtrace.each do |msg|
+          puts ['  ', line, msg].join
+        end
         Thread.current[:last_repeated_stacktrace] = backtrace if @suppress_repeated_stacktrace
       end
 
@@ -265,47 +265,46 @@ module Fluent
       time = Time.now
       message = ''
       map = {}
-      args.each {|a|
+      args.each do|a|
         if a.is_a?(Hash)
-          a.each_pair {|k,v|
+          a.each_pair do|k, v|
             map[k.to_s] = v
-          }
+          end
         else
           message << a.to_s
         end
-      }
+      end
 
-      map.each_pair {|k,v|
+      map.each_pair do|k, v|
         message << " #{k}=#{v.inspect}"
-      }
+      end
 
       unless @threads_exclude_events.include?(Thread.current)
         record = map.dup
-        record.keys.each {|key|
+        record.keys.each do|key|
           record[key] = record[key].inspect unless record[key].respond_to?(:to_msgpack)
-        }
+        end
         record['message'] = message.dup
         Engine.push_log_event("#{@tag}.#{level}", time.to_i, record)
       end
 
-      return time, message
+      [time, message]
     end
 
     def caller_line(time, depth, level)
       log_msg = "#{time.strftime(@time_format)}[#{LEVEL_TEXT[level]}]: "
       if @debug_mode
-        line = caller(depth+1)[0]
+        line = caller(depth + 1)[0]
         if match = /^(.+?):(\d+)(?::in `(.*)')?/.match(line)
-          file = match[1].split('/')[-2,2].join('/')
+          file = match[1].split('/')[-2, 2].join('/')
           line = match[2]
           method = match[3]
           return "#{log_msg}#{file}:#{line}:#{method}: "
         end
       end
-      return log_msg
+      log_msg
     end
   end
-
 
   # PluginLogger has own log level separated from global $log object.
   # This class enables log_level option in each plugin.
@@ -326,7 +325,7 @@ module Fluent
       @level = Log.str_to_level(log_level_str)
     end
 
-    alias orig_enable_color enable_color
+    alias_method :orig_enable_color, :enable_color
 
     def enable_color(b = true)
       orig_enable_color b
@@ -335,16 +334,15 @@ module Fluent
 
     extend Forwardable
     def_delegators '@logger', :enable_color?, :enable_debug, :enable_event,
-      :disable_events, :tag, :tag=, :time_format, :time_format=,
-      :event, :caller_line, :puts, :write, :flush, :out, :out=
+                   :disable_events, :tag, :tag=, :time_format, :time_format=,
+                   :event, :caller_line, :puts, :write, :flush, :out, :out=
   end
-
 
   module PluginLoggerMixin
     def self.included(klass)
-      klass.instance_eval {
+      klass.instance_eval do
         config_param :log_level, :string, default: nil, alias: :@log_level
-      }
+      end
     end
 
     def initialize
@@ -359,9 +357,7 @@ module Fluent
       super
 
       if @log_level
-        unless @log.is_a?(PluginLogger)
-          @log = PluginLogger.new($log)
-        end
+        @log = PluginLogger.new($log) unless @log.is_a?(PluginLogger)
         @log.level = @log_level
       end
     end

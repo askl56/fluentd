@@ -75,7 +75,7 @@ module Fluent
 
     def run_configure(conf)
       configure(conf)
-      conf.check_not_fetched { |key, e|
+      conf.check_not_fetched do |key, e|
         parent_name, plugin_name = e.unused_in
         if parent_name
           message = if plugin_name
@@ -91,12 +91,12 @@ module Fluent
             $log.warn "parameter '#{key}' in #{e.to_s.strip} is not used."
           end
         end
-      }
+      end
     end
 
     def configure(conf)
       # plugins / configuration dumps
-      Gem::Specification.find_all.select{|x| x.name =~ /^fluent(d|-(plugin|mixin)-.*)$/}.each do |spec|
+      Gem::Specification.find_all.select { |x| x.name =~ /^fluent(d|-(plugin|mixin)-.*)$/ }.each do |spec|
         $log.info "gem '#{spec.name}' version '#{spec.version}'"
       end
 
@@ -113,9 +113,7 @@ module Fluent
     end
 
     def emit(tag, time, record)
-      unless record.nil?
-        emit_stream tag, OneEventStream.new(time, record)
-      end
+      emit_stream tag, OneEventStream.new(time, record) unless record.nil?
     end
 
     def emit_array(tag, array)
@@ -131,7 +129,7 @@ module Fluent
     end
 
     def now
-      # TODO thread update
+      # TODO: thread update
       Time.now.to_i
     end
 
@@ -146,48 +144,46 @@ module Fluent
         events = @log_event_queue.slice!(0..-1)
         next if events.empty?
 
-        events.each {|tag,time,record|
+        events.each do|tag, time, record|
           begin
             @event_router.emit(tag, time, record)
           rescue => e
             $log.error "failed to emit fluentd's log event", tag: tag, event: record, error_class: e.class, error: e
           end
-        }
+        end
       end
     end
 
     def run
-      begin
-        start
+      start
 
-        if @event_router.match?($log.tag)
-          $log.enable_event
-          @log_emit_thread = Thread.new(&method(:log_event_loop))
-        end
+      if @event_router.match?($log.tag)
+        $log.enable_event
+        @log_emit_thread = Thread.new(&method(:log_event_loop))
+      end
 
-        unless @engine_stopped
-          # for empty loop
-          @default_loop = Coolio::Loop.default
-          @default_loop.attach Coolio::TimerWatcher.new(1, true)
-          # TODO attach async watch for thread pool
-          @default_loop.run
-        end
+      unless @engine_stopped
+        # for empty loop
+        @default_loop = Coolio::Loop.default
+        @default_loop.attach Coolio::TimerWatcher.new(1, true)
+        # TODO: attach async watch for thread pool
+        @default_loop.run
+      end
 
-        if @engine_stopped and @default_loop
-          @default_loop.stop
-          @default_loop = nil
-        end
+      if @engine_stopped && @default_loop
+        @default_loop.stop
+        @default_loop = nil
+      end
 
-      rescue => e
-        $log.error "unexpected error", error_class:e.class, error:e
-        $log.error_backtrace
-      ensure
-        $log.info "shutting down fluentd"
-        shutdown
-        if @log_emit_thread
-          @log_event_loop_stop = true
-          @log_emit_thread.join
-        end
+    rescue => e
+      $log.error 'unexpected error', error_class: e.class, error: e
+      $log.error_backtrace
+    ensure
+      $log.info 'shutting down fluentd'
+      shutdown
+      if @log_emit_thread
+        @log_event_loop_stop = true
+        @log_emit_thread.join
       end
     end
 

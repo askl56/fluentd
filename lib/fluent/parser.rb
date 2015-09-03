@@ -38,8 +38,8 @@ module Fluent
       super
     end
 
-    def parse(text)
-      raise NotImplementedError, "Implement this method in child class"
+    def parse(_text)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     # Keep backward compatibility for existing plugins
@@ -60,7 +60,7 @@ module Fluent
         @cache2_time = nil
         @parser =
           if time_format
-            Proc.new { |value| Time.strptime(value, time_format) }
+            proc { |value| Time.strptime(value, time_format) }
           else
             Time.method(:parse)
           end
@@ -68,7 +68,7 @@ module Fluent
 
       def parse(value)
         unless value.is_a?(String)
-          raise ParserError, "value must be string: #{value}"
+          fail ParserError, "value must be string: #{value}"
         end
 
         if @cache1_key == value
@@ -92,31 +92,31 @@ module Fluent
 
     module TypeConverter
       Converters = {
-        'string' => lambda { |v| v.to_s },
-        'integer' => lambda { |v| v.to_i },
-        'float' => lambda { |v| v.to_f },
-        'bool' => lambda { |v|
+        'string' => ->(v) { v.to_s },
+        'integer' => ->(v) { v.to_i },
+        'float' => ->(v) { v.to_f },
+        'bool' => lambda do |v|
           case v.downcase
           when 'true', 'yes', '1'
             true
           else
             false
           end
-        },
-        'time' => lambda { |v, time_parser|
+        end,
+        'time' => lambda do |v, time_parser|
           time_parser.parse(v)
-        },
-        'array' => lambda { |v, delimiter|
+        end,
+        'array' => lambda do |v, delimiter|
           v.to_s.split(delimiter)
-        }
+        end
       }
 
       def self.included(klass)
-        klass.instance_eval {
+        klass.instance_eval do
           config_param :types, :string, default: nil
           config_param :types_delimiter, :string, default: ','
           config_param :types_label_delimiter, :string, default: ':'
-        }
+        end
       end
 
       def configure(conf)
@@ -135,25 +135,25 @@ module Fluent
       def parse_types_parameter
         converters = {}
 
-        @types.split(@types_delimiter).each { |pattern_name|
+        @types.split(@types_delimiter).each do |pattern_name|
           name, type, format = pattern_name.split(@types_label_delimiter, 3)
-          raise ConfigError, "Type is needed" if type.nil?
+          fail ConfigError, 'Type is needed' if type.nil?
 
           case type
           when 'time'
             t_parser = TimeParser.new(format)
-            converters[name] = lambda { |v|
+            converters[name] = lambda do |v|
               Converters[type].call(v, t_parser)
-            }
+            end
           when 'array'
             delimiter = format || ','
-            converters[name] = lambda { |v|
+            converters[name] = lambda do |v|
               Converters[type].call(v, delimiter)
-            }
+            end
           else
             converters[name] = Converters[type]
           end
-        }
+        end
 
         converters
       end
@@ -165,7 +165,7 @@ module Fluent
       config_param :time_key, :string, default: 'time'
       config_param :time_format, :string, default: nil
 
-      def initialize(regexp, conf={})
+      def initialize(regexp, conf = {})
         super()
         @regexp = regexp
         unless conf.empty?
@@ -183,7 +183,7 @@ module Fluent
       end
 
       def patterns
-        {'format' => @regexp, 'time_format' => @time_format}
+        { 'format' => @regexp, 'time_format' => @time_format }
       end
 
       def parse(text)
@@ -200,7 +200,7 @@ module Fluent
         time = nil
         record = {}
 
-        m.names.each {|name|
+        m.names.each do|name|
           if value = m[name]
             case name
             when @time_key
@@ -220,11 +220,9 @@ module Fluent
                              end
             end
           end
-        }
-
-        if @estimate_current_event
-          time ||= Engine.now
         end
+
+        time ||= Engine.now if @estimate_current_event
 
         if block_given?
           yield time, record
@@ -290,7 +288,7 @@ module Fluent
         if val.start_with?('[') # This check is enough because keys parameter is simple. No '[' started column name.
           JSON.load(val)
         else
-          val.split(",")
+          val.split(',')
         end
       end
       config_param :time_key, :string, default: nil
@@ -302,11 +300,11 @@ module Fluent
         super
 
         if @time_key && !@keys.include?(@time_key) && @estimate_current_event
-          raise ConfigError, "time_key (#{@time_key.inspect}) is not included in keys (#{@keys.inspect})"
+          fail ConfigError, "time_key (#{@time_key.inspect}) is not included in keys (#{@keys.inspect})"
         end
 
         if @time_format && !@time_key
-          raise ConfigError, "time_format parameter is ignored because time_key parameter is not set. at #{conf.inspect}"
+          fail ConfigError, "time_format parameter is ignored because time_key parameter is not set. at #{conf.inspect}"
         end
 
         @time_parser = TimeParser.new(@time_format)
@@ -324,11 +322,7 @@ module Fluent
         if @time_key
           value = @keep_time_key ? record[@time_key] : record.delete(@time_key)
           time = if value.nil?
-                   if @estimate_current_event
-                     Engine.now
-                   else
-                     nil
-                   end
+                   Engine.now if @estimate_current_event
                  else
                    @mutex.synchronize { @time_parser.parse(value) }
                  end
@@ -340,24 +334,22 @@ module Fluent
 
         convert_field_type!(record) if @type_converters
 
-        return time, record
+        [time, record]
       end
 
       private
 
       def convert_field_type!(record)
-        @type_converters.each_key { |key|
+        @type_converters.each_key do |key|
           if value = record[key]
             record[key] = convert_type(key, value)
           end
-        }
+        end
       end
 
       def convert_value_to_nil(value)
-        if value and @null_empty_string
-          value = (value == '') ? nil : value
-        end
-        if value and @null_value_pattern
+        value = (value == '') ? nil : value if value && @null_empty_string
+        if value && @null_value_pattern
           value = ::Fluent::StringUtil.match_regexp(@null_value_pattern, value) ? nil : value
         end
         value
@@ -383,8 +375,8 @@ module Fluent
 
     class LabeledTSVParser < ValuesParser
       config_param :delimiter,       :string, default: "\t"
-      config_param :label_delimiter, :string, default:  ":"
-      config_param :time_key, :string, default:  "time"
+      config_param :label_delimiter, :string, default: ':'
+      config_param :time_key, :string, default: 'time'
 
       def configure(conf)
         conf['keys'] = conf['time_key'] || 'time'
@@ -441,7 +433,7 @@ module Fluent
 
     class ApacheParser < Parser
       REGEXP = /^(?<host>[^ ]*) [^ ]* (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")?$/
-      TIME_FORMAT = "%d/%b/%Y:%H:%M:%S %z"
+      TIME_FORMAT = '%d/%b/%Y:%H:%M:%S %z'
 
       def initialize
         super
@@ -450,7 +442,7 @@ module Fluent
       end
 
       def patterns
-        {'format' => REGEXP, 'time_format' => TIME_FORMAT}
+        { 'format' => REGEXP, 'time_format' => TIME_FORMAT }
       end
 
       def parse(text)
@@ -489,16 +481,16 @@ module Fluent
         agent = (agent == '-') ? nil : agent
 
         record = {
-          "host" => host,
-          "user" => user,
-          "method" => method,
-          "path" => path,
-          "code" => code,
-          "size" => size,
-          "referer" => referer,
-          "agent" => agent,
+          'host' => host,
+          'user' => user,
+          'method' => method,
+          'path' => path,
+          'code' => code,
+          'size' => size,
+          'referer' => referer,
+          'agent' => agent
         }
-        record["time"] = m['time'] if @keep_time_key
+        record['time'] = m['time'] if @keep_time_key
 
         if block_given?
           yield time, record
@@ -514,7 +506,7 @@ module Fluent
       # From in_syslog default pattern
       REGEXP_WITH_PRI = /^\<(?<pri>[0-9]+)\>(?<time>[^ ]* {1,2}[^ ]* [^ ]*) (?<host>[^ ]*) (?<ident>[a-zA-Z0-9_\/\.\-]*)(?:\[(?<pid>[0-9]+)\])?(?:[^\:]*\:)? *(?<message>.*)$/
 
-      config_param :time_format, :string, default: "%b %d %H:%M:%S"
+      config_param :time_format, :string, default: '%b %d %H:%M:%S'
       config_param :with_priority, :bool, default: false
 
       def initialize
@@ -530,7 +522,7 @@ module Fluent
       end
 
       def patterns
-        {'format' => @regexp, 'time_format' => @time_format}
+        { 'format' => @regexp, 'time_format' => @time_format }
       end
 
       def parse(text)
@@ -547,23 +539,21 @@ module Fluent
         time = nil
         record = {}
 
-        m.names.each { |name|
+        m.names.each do |name|
           if value = m[name]
             case name
-            when "pri"
+            when 'pri'
               record['pri'] = value.to_i
-            when "time"
+            when 'time'
               time = @mutex.synchronize { @time_parser.parse(value.gsub(/ +/, ' ')) }
               record[name] = value if @keep_time_key
             else
               record[name] = value
             end
           end
-        }
-
-        if @estimate_current_event
-          time ||= Engine.now
         end
+
+        time ||= Engine.now if @estimate_current_event
 
         if block_given?
           yield time, record
@@ -584,9 +574,7 @@ module Fluent
         formats = parse_formats(conf).compact.map { |f| f[1..-2] }.join
         begin
           @regex = Regexp.new(formats, Regexp::MULTILINE)
-          if @regex.named_captures.empty?
-            raise "No named captures"
-          end
+          fail 'No named captures' if @regex.named_captures.empty?
           @parser = RegexpParser.new(@regex, conf)
         rescue => e
           raise ConfigError, "Invalid regexp '#{formats}': #{e}"
@@ -620,26 +608,26 @@ module Fluent
         check_format_range(conf)
 
         prev_format = nil
-        (1..FORMAT_MAX_NUM).map { |i|
+        (1..FORMAT_MAX_NUM).map do |i|
           format = conf["format#{i}"]
           if (i > 1) && prev_format.nil? && !format.nil?
-            raise ConfigError, "Jump of format index found. format#{i - 1} is missing."
+            fail ConfigError, "Jump of format index found. format#{i - 1} is missing."
           end
           prev_format = format
           next if format.nil?
 
           check_format_regexp(format, "format#{i}")
           format
-        }
+        end
       end
 
       def check_format_range(conf)
-        invalid_formats = conf.keys.select { |k|
+        invalid_formats = conf.keys.select do |k|
           m = k.match(/^format(\d+)$/)
           m ? !((1..FORMAT_MAX_NUM).include?(m[1].to_i)) : false
-        }
+        end
         unless invalid_formats.empty?
-          raise ConfigError, "Invalid formatN found. N should be 1 - #{FORMAT_MAX_NUM}: " + invalid_formats.join(",")
+          fail ConfigError, "Invalid formatN found. N should be 1 - #{FORMAT_MAX_NUM}: " + invalid_formats.join(',')
         end
       end
 
@@ -651,34 +639,34 @@ module Fluent
             raise ConfigError, "Invalid regexp in #{key}: #{e}"
           end
         else
-          raise ConfigError, "format should be Regexp, need //, in #{key}: '#{format}'"
+          fail ConfigError, "format should be Regexp, need //, in #{key}: '#{format}'"
         end
       end
     end
 
     TEMPLATE_REGISTRY = Registry.new(:config_type, 'fluent/plugin/parser_')
     {
-      'apache' => Proc.new { RegexpParser.new(/^(?<host>[^ ]*) [^ ]* (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^ ]*) +\S*)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")?$/, {'time_format'=>"%d/%b/%Y:%H:%M:%S %z"}) },
-      'apache_error' => Proc.new { RegexpParser.new(/^\[[^ ]* (?<time>[^\]]*)\] \[(?<level>[^\]]*)\](?: \[pid (?<pid>[^\]]*)\])?( \[client (?<client>[^\]]*)\])? (?<message>.*)$/) },
-      'apache2' => Proc.new { ApacheParser.new },
-      'syslog' => Proc.new { SyslogParser.new },
-      'json' => Proc.new { JSONParser.new },
-      'tsv' => Proc.new { TSVParser.new },
-      'ltsv' => Proc.new { LabeledTSVParser.new },
-      'csv' => Proc.new { CSVParser.new },
-      'nginx' => Proc.new { RegexpParser.new(/^(?<remote>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")?$/,  {'time_format'=>"%d/%b/%Y:%H:%M:%S %z"}) },
-      'none' => Proc.new { NoneParser.new },
-      'multiline' => Proc.new { MultilineParser.new },
-    }.each { |name, factory|
+      'apache' => proc { RegexpParser.new(/^(?<host>[^ ]*) [^ ]* (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^ ]*) +\S*)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")?$/, 'time_format' => '%d/%b/%Y:%H:%M:%S %z') },
+      'apache_error' => proc { RegexpParser.new(/^\[[^ ]* (?<time>[^\]]*)\] \[(?<level>[^\]]*)\](?: \[pid (?<pid>[^\]]*)\])?( \[client (?<client>[^\]]*)\])? (?<message>.*)$/) },
+      'apache2' => proc { ApacheParser.new },
+      'syslog' => proc { SyslogParser.new },
+      'json' => proc { JSONParser.new },
+      'tsv' => proc { TSVParser.new },
+      'ltsv' => proc { LabeledTSVParser.new },
+      'csv' => proc { CSVParser.new },
+      'nginx' => proc { RegexpParser.new(/^(?<remote>[^ ]*) (?<host>[^ ]*) (?<user>[^ ]*) \[(?<time>[^\]]*)\] "(?<method>\S+)(?: +(?<path>[^\"]*?)(?: +\S*)?)?" (?<code>[^ ]*) (?<size>[^ ]*)(?: "(?<referer>[^\"]*)" "(?<agent>[^\"]*)")?$/, 'time_format' => '%d/%b/%Y:%H:%M:%S %z') },
+      'none' => proc { NoneParser.new },
+      'multiline' => proc { MultilineParser.new }
+    }.each do |name, factory|
       TEMPLATE_REGISTRY.register(name, factory)
-    }
+    end
 
-    def self.register_template(name, regexp_or_proc, time_format=nil)
+    def self.register_template(name, regexp_or_proc, time_format = nil)
       if regexp_or_proc.is_a?(Class)
-        factory = Proc.new { regexp_or_proc.new }
+        factory = proc { regexp_or_proc.new }
       elsif regexp_or_proc.is_a?(Regexp)
         regexp = regexp_or_proc
-        factory = Proc.new { RegexpParser.new(regexp, {'time_format'=>time_format}) }
+        factory = proc { RegexpParser.new(regexp, 'time_format' => time_format) }
       else
         factory = regexp_or_proc
       end
@@ -687,19 +675,15 @@ module Fluent
     end
 
     def self.lookup(format)
-      if format.nil?
-        raise ConfigError, "'format' parameter is required"
-      end
+      fail ConfigError, "'format' parameter is required" if format.nil?
 
-      if format[0] == ?/ && format[format.length-1] == ?/
+      if format[0] == '/' && format[format.length - 1] == '/'
         # regexp
         begin
           regexp = Regexp.new(format[1..-2])
-          if regexp.named_captures.empty?
-            raise "No named captures"
-          end
+          fail 'No named captures' if regexp.named_captures.empty?
         rescue
-          raise ConfigError, "Invalid regexp '#{format[1..-2]}': #{$!}"
+          raise ConfigError, "Invalid regexp '#{format[1..-2]}': #{$ERROR_INFO}"
         end
 
         RegexpParser.new(regexp)
@@ -726,7 +710,7 @@ module Fluent
     # 'configure()' may raise errors for unexpected configurations
     attr_accessor :estimate_current_event
 
-    def configure(conf, required=true)
+    def configure(conf, _required = true)
       format = conf['format']
 
       @parser = TextParser.lookup(format)
@@ -734,11 +718,9 @@ module Fluent
         @parser.estimate_current_event = @estimate_current_event
       end
 
-      if @parser.respond_to?(:configure)
-        @parser.configure(conf)
-      end
+      @parser.configure(conf) if @parser.respond_to?(:configure)
 
-      return true
+      true
     end
 
     def parse(text, &block)

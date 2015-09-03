@@ -1,10 +1,10 @@
 require_relative '../helper'
-require_relative "assertions"
-require "json"
-require "fluent/config/error"
-require "fluent/config/basic_parser"
-require "fluent/config/literal_parser"
-require "fluent/config/v1_parser"
+require_relative 'assertions'
+require 'json'
+require 'fluent/config/error'
+require 'fluent/config/basic_parser'
+require 'fluent/config/literal_parser'
+require 'fluent/config/v1_parser'
 
 module Fluent::Config
   module V1TestHelper
@@ -17,7 +17,7 @@ module Fluent::Config
       Fluent::Config::Element.new('ROOT', '', attrs, elements)
     end
 
-    def e(name, arg='', attrs={}, elements=[])
+    def e(name, arg = '', attrs = {}, elements = [])
       Fluent::Config::Element.new(name, arg, attrs, elements)
     end
   end
@@ -38,153 +38,153 @@ module Fluent::Config
     extend V1TestHelper
 
     sub_test_case 'attribute parsing' do
-      test "parses attributes" do
-        assert_text_parsed_as(e('ROOT', '', {"k1"=>"v1", "k2"=>"v2"}), %[
+      test 'parses attributes' do
+        assert_text_parsed_as(e('ROOT', '', { 'k1' => 'v1', 'k2' => 'v2' }), %(
           k1 v1
           k2 v2
-        ])
+        ))
       end
 
-      test "allows attribute without value" do
-        assert_text_parsed_as(e('ROOT', '', {"k1"=>"", "k2"=>"v2"}), %[
+      test 'allows attribute without value' do
+        assert_text_parsed_as(e('ROOT', '', { 'k1' => '', 'k2' => 'v2' }), %(
           k1
           k2 v2
-        ])
+        ))
       end
 
-      test "parses attribute key always string" do
-        assert_text_parsed_as(e('ROOT', '', {"1" => "1"}), "1 1")
+      test 'parses attribute key always string' do
+        assert_text_parsed_as(e('ROOT', '', { '1' => '1' }), '1 1')
       end
 
-      data("_.%$!,"     => "_.%$!,",
+      data('_.%$!,'     => '_.%$!,',
            "/=~-~@\`:?" => "/=~-~@\`:?",
-           "()*{}.[]"   => "()*{}.[]")
-      test "parses a value with symbols" do |v|
-        assert_text_parsed_as(e('ROOT', '', {"k" => v}), "k #{v}")
+           '()*{}.[]'   => '()*{}.[]')
+      test 'parses a value with symbols' do |v|
+        assert_text_parsed_as(e('ROOT', '', { 'k' => v }), "k #{v}")
       end
 
-      test "ignores spacing around value" do
-        assert_text_parsed_as(e('ROOT', '', {"k1" => "a"}), "  k1     a    ")
+      test 'ignores spacing around value' do
+        assert_text_parsed_as(e('ROOT', '', { 'k1' => 'a' }), '  k1     a    ')
       end
 
-      test "allows spaces in value" do
-        assert_text_parsed_as(e('ROOT', '', {"k1" => "a  b  c"}), "k1 a  b  c")
+      test 'allows spaces in value' do
+        assert_text_parsed_as(e('ROOT', '', { 'k1' => 'a  b  c' }), 'k1 a  b  c')
       end
 
       sub_test_case 'non-quoted string' do
         test "remains text starting with '#'" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "#not_comment"}), "  k1 #not_comment")
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '#not_comment' }), '  k1 #not_comment')
         end
 
         test "remains text just after '#'" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "a#not_comment"}), "  k1 a#not_comment")
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => 'a#not_comment' }), '  k1 a#not_comment')
         end
 
-        test "remove text after ` #` (comment)" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "a"}), "  k1 a #comment")
+        test 'remove text after ` #` (comment)' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => 'a' }), '  k1 a #comment')
         end
 
-        test "does not require escaping backslash" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "\\\\"}), "  k1 \\\\")
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "\\"}), "  k1 \\")
+        test 'does not require escaping backslash' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\\\\' }), '  k1 \\\\')
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\\' }), '  k1 \\')
         end
 
-        test "remains backslash in front of a normal character" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => '\['}), "  k1 \\[")
+        test 'remains backslash in front of a normal character' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\[' }), '  k1 \\[')
         end
 
-        test "does not accept escape characters" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => '\n'}), "  k1 \\n")
+        test 'does not accept escape characters' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\n' }), '  k1 \\n')
         end
       end
 
       sub_test_case 'double quoted string' do
-        test "allows # in value" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "a#comment"}), '  k1 "a#comment"')
+        test 'allows # in value' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => 'a#comment' }), '  k1 "a#comment"')
         end
 
-        test "rejects characters after double quoted string" do
+        test 'rejects characters after double quoted string' do
           assert_parse_error('  k1 "a" 1')
         end
 
-        test "requires escaping backslash" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "\\"}), '  k1 "\\\\"')
+        test 'requires escaping backslash' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\\' }), '  k1 "\\\\"')
           assert_parse_error('  k1 "\\"')
         end
 
-        test "requires escaping double quote" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => '"'}), '  k1 "\\""')
+        test 'requires escaping double quote' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '"' }), '  k1 "\\""')
           assert_parse_error('  k1 """')
         end
 
-        test "removes backslash in front of a normal character" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => '['}), '  k1 "\\["')
+        test 'removes backslash in front of a normal character' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '[' }), '  k1 "\\["')
         end
 
-        test "accepts escape characters" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "\n"}), '  k1 "\\n"')
+        test 'accepts escape characters' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => "\n" }), '  k1 "\\n"')
         end
       end
 
       sub_test_case 'single quoted string' do
-        test "allows # in value" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "a#comment"}), "  k1 'a#comment'")
+        test 'allows # in value' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => 'a#comment' }), "  k1 'a#comment'")
         end
 
-        test "rejects characters after single quoted string" do
+        test 'rejects characters after single quoted string' do
           assert_parse_error("  k1 'a' 1")
         end
 
-        test "requires escaping backslash" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "\\"}), "  k1 '\\\\'")
+        test 'requires escaping backslash' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\\' }), "  k1 '\\\\'")
           assert_parse_error("  k1 '\\'")
         end
 
-        test "requires escaping single quote" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "'"}), "  k1 '\\''")
+        test 'requires escaping single quote' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => "'" }), "  k1 '\\''")
           assert_parse_error("  k1 '''")
         end
 
-        test "remains backslash in front of a normal character" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => '\\['}), "  k1 '\\['")
+        test 'remains backslash in front of a normal character' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\\[' }), "  k1 '\\['")
         end
 
-        test "does not accept escape characters" do
-          assert_text_parsed_as(e('ROOT', '', {"k1" => "\\n"}), "  k1 '\\n'")
+        test 'does not accept escape characters' do
+          assert_text_parsed_as(e('ROOT', '', { 'k1' => '\\n' }), "  k1 '\\n'")
         end
       end
 
       data(
-        "in match" => %[
+        'in match' => %(
           <match>
             @k v
           </match>
-        ],
-        "in source" => %[
+        ),
+        'in source' => %(
           <source>
             @k v
           </source>
-        ],
-        "in filter" => %[
+        ),
+        'in filter' => %(
           <filter>
             @k v
           </filter>
-        ],
-        "in top-level" => '  @k v '
-        )
+        ),
+        'in top-level' => '  @k v '
+      )
       def test_rejects_at_prefix_in_the_parameter_name(data)
         assert_parse_error(data)
       end
 
       data(
-        "in nested" => %[
+        'in nested' => %(
           <match>
             <record>
               @k v
             </record>
           </match>
-        ]
         )
+      )
       def test_not_reject_at_prefix_in_the_parameter_name(data)
         assert_nothing_raised { parse_text(data) }
       end
@@ -192,21 +192,21 @@ module Fluent::Config
 
     sub_test_case 'element parsing' do
       data(
-        'root' => [root, ""],
-        "accepts empty element" => [root(e("test")), %[
+        'root' => [root, ''],
+        'accepts empty element' => [root(e('test')), %(
           <test>
           </test>
-        ]],
-        "accepts argument and attributes" => [root(e("test", 'var', {'key'=>"val"})), %[
+        )],
+        'accepts argument and attributes' => [root(e('test', 'var', { 'key' => 'val' })), %(
           <test var>
             key val
           </test>
-        ]],
-        "accepts nested elements" => [root(
-          e("test", 'var', {'key'=>'1'}, [
+        )],
+        'accepts nested elements' => [root(
+          e('test', 'var', { 'key' => '1' }, [
             e('nested1'),
             e('nested2')
-          ])), %[
+          ])), %(
           <test var>
             key 1
             <nested1>
@@ -214,60 +214,60 @@ module Fluent::Config
             <nested2>
             </nested2>
           </test>
-        ]],
-        "accepts multiline json values" => [root(e("test", 'var', {'key'=>"[\"a\",\"b\",\"c\",\"d\"]"})), %[
+        )],
+        'accepts multiline json values' => [root(e('test', 'var', { 'key' => "[\"a\",\"b\",\"c\",\"d\"]" })), %(
           <test var>
             key ["a",
 "b", "c",
 "d"]
           </test>
-        ]],
-        "parses empty element argument to nil" => [root(e("test", '')), %[
+        )],
+        'parses empty element argument to nil' => [root(e('test', '')), %(
           <test >
           </test>
-        ]],
-        "ignores spacing around element argument" => [root(e("test", "a")), %[
+        )],
+        'ignores spacing around element argument' => [root(e('test', 'a')), %(
           <test    a    >
           </test>
-        ]],
-        "accepts spacing inside element argument (for multiple tags)" => [root(e("test", "a.** b.**")), %[
+        )],
+        'accepts spacing inside element argument (for multiple tags)' => [root(e('test', 'a.** b.**')), %(
           <test    a.** b.** >
           </test>
-        ]])
+        )])
       def test_parse_element(data)
         expected, target = data
         assert_text_parsed_as(expected, target)
       end
 
       [
-        "**",
-        "*.*",
-        "1",
-        "_.%$!",
-        "/",
-        "()*{}.[]",
+        '**',
+        '*.*',
+        '1',
+        '_.%$!',
+        '/',
+        '()*{}.[]'
       ].each do |arg|
         test "parses symbol element argument:#{arg}" do
-          assert_text_parsed_as(root(e("test", arg)), %[
+          assert_text_parsed_as(root(e('test', arg)), %(
             <test #{arg}>
             </test>
-          ])
+          ))
         end
       end
 
       data(
-        "considers comments in element argument" => %[
+        'considers comments in element argument' => %(
           <test #a>
           </test>
-        ],
-        "requires line_end after begin tag" => %[
+        ),
+        'requires line_end after begin tag' => %(
           <test></test>
-        ],
-        "requires line_end after end tag" => %[
+        ),
+        'requires line_end after end tag' => %(
           <test>
           </test><test>
           </test>
-        ])
+        ))
       def test_parse_error(data)
         assert_parse_error(data)
       end
@@ -279,57 +279,57 @@ module Fluent::Config
 
       def write_config(path, data)
         FileUtils.mkdir_p(File.dirname(path))
-        File.open(path, "w") { |f| f.write data }
+        File.open(path, 'w') { |f| f.write data }
       end
 
       def prepare_config
-        write_config "#{TMP_DIR}/config_test_1.conf", %[
+        write_config "#{TMP_DIR}/config_test_1.conf", %(
         k1 root_config
         include dir/config_test_2.conf  #
         @include #{TMP_DIR}/config_test_4.conf
         include file://#{TMP_DIR}/config_test_5.conf
         @include config.d/*.conf
-      ]
-        write_config "#{TMP_DIR}/dir/config_test_2.conf", %[
+      )
+        write_config "#{TMP_DIR}/dir/config_test_2.conf", %(
         k2 relative_path_include
         @include ../config_test_3.conf
-      ]
-        write_config "#{TMP_DIR}/config_test_3.conf", %[
+      )
+        write_config "#{TMP_DIR}/config_test_3.conf", %(
         k3 relative_include_in_included_file
-      ]
-        write_config "#{TMP_DIR}/config_test_4.conf", %[
+      )
+        write_config "#{TMP_DIR}/config_test_4.conf", %(
         k4 absolute_path_include
-      ]
-        write_config "#{TMP_DIR}/config_test_5.conf", %[
+      )
+        write_config "#{TMP_DIR}/config_test_5.conf", %(
         k5 uri_include
-      ]
-        write_config "#{TMP_DIR}/config.d/config_test_6.conf", %[
+      )
+        write_config "#{TMP_DIR}/config.d/config_test_6.conf", %(
         k6 wildcard_include_1
         <elem1 name>
           include normal_parameter
         </elem1>
-      ]
-        write_config "#{TMP_DIR}/config.d/config_test_7.conf", %[
+      )
+        write_config "#{TMP_DIR}/config.d/config_test_7.conf", %(
         k7 wildcard_include_2
-      ]
-        write_config "#{TMP_DIR}/config.d/config_test_8.conf", %[
+      )
+        write_config "#{TMP_DIR}/config.d/config_test_8.conf", %(
         <elem2 name>
           @include ../dir/config_test_9.conf
         </elem2>
-      ]
-        write_config "#{TMP_DIR}/dir/config_test_9.conf", %[
+      )
+        write_config "#{TMP_DIR}/dir/config_test_9.conf", %(
         k9 embeded
         <elem3 name>
           nested nested_value
           include hoge
         </elem3>
-      ]
-        write_config "#{TMP_DIR}/config.d/00_config_test_8.conf", %[
+      )
+        write_config "#{TMP_DIR}/config.d/00_config_test_8.conf", %(
         k8 wildcard_include_3
         <elem4 name>
           include normal_parameter
         </elem4>
-      ]
+      )
       end
 
       test 'parses @include / include correctly' do
@@ -344,15 +344,15 @@ module Fluent::Config
         assert_equal('wildcard_include_2', c['k7'])
         assert_equal('wildcard_include_3', c['k8'])
         assert_equal([
-            'k1',
-            'k2',
-            'k3',
-            'k4',
-            'k5',
-            'k8', # Because of the file name this comes first.
-            'k6',
-            'k7',
-          ], c.keys)
+          'k1',
+          'k2',
+          'k3',
+          'k4',
+          'k5',
+          'k8', # Because of the file name this comes first.
+          'k6',
+          'k7'
+        ], c.keys)
 
         elem1 = c.elements.find { |e| e.name == 'elem1' }
         assert(elem1)
@@ -376,10 +376,10 @@ module Fluent::Config
 
     sub_test_case '#to_s' do
       test 'parses dumpped configuration' do
-        original = %q!a\\\n\r\f\b'"z!
-        expected = %q!a\\\n\r\f\b'"z!
+        original = %q(a\\\n\r\f\b'"z)
+        expected = %q(a\\\n\r\f\b'"z)
 
-        conf = parse_text(%[k1 #{original}])
+        conf = parse_text(%(k1 #{original}))
         assert_equal(expected, conf['k1']) # escape check
         conf2 = parse_text(conf.to_s) # use dumpped configuration to check unescape
         assert_equal(expected, conf2.elements.first['k1'])

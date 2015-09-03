@@ -29,12 +29,12 @@ module Fluent
 
     def configure(conf)
       super
-      conf.elements.select {|e|
+      conf.elements.select do|e|
         e.name == 'store'
-      }.each {|e|
+      end.each do|e|
         type = e['@type'] || e['type']
         unless type
-          raise ConfigError, "Missing 'type' parameter on <store> directive"
+          fail ConfigError, "Missing 'type' parameter on <store> directive"
         end
         log.debug "adding store type=#{type.dump}"
 
@@ -42,27 +42,23 @@ module Fluent
         output.router = router
         output.configure(e)
         @outputs << output
-      }
+      end
     end
 
     def start
-      @outputs.each {|o|
-        o.start
-      }
+      @outputs.each(&:start)
     end
 
     def shutdown
-      @outputs.each {|o|
-        o.shutdown
-      }
+      @outputs.each(&:shutdown)
     end
 
     def emit(tag, es, chain)
       unless es.repeatable?
         m = MultiEventStream.new
-        es.each {|time,record|
+        es.each do|time, record|
           m.add(time, record)
-        }
+        end
         es = m
       end
       if @deep_copy

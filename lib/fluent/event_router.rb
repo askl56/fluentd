@@ -75,9 +75,7 @@ module Fluent
     end
 
     def emit(tag, time, record)
-      unless record.nil?
-        emit_stream(tag, OneEventStream.new(time, record))
-      end
+      emit_stream(tag, OneEventStream.new(time, record)) unless record.nil?
     end
 
     def emit_array(tag, array)
@@ -99,9 +97,9 @@ module Fluent
     end
 
     def match(tag)
-      collector = @match_cache.get(tag) {
+      collector = @match_cache.get(tag) do
         c = find(tag) || @default_collector
-      }
+      end
       collector
     end
 
@@ -146,16 +144,16 @@ module Fluent
 
       def emit(tag, es, chain)
         processed = es
-        @filters.each { |filter|
+        @filters.each do |filter|
           processed = filter.filter_stream(tag, processed)
-        }
+        end
         @output.emit(tag, processed, chain)
       end
     end
 
     def find(tag)
       pipeline = nil
-      @match_rules.each_with_index { |rule, i|
+      @match_rules.each_with_index do |rule, _i|
         if rule.match?(tag)
           if rule.collector.is_a?(Filter)
             pipeline ||= Pipeline.new
@@ -170,14 +168,12 @@ module Fluent
             return pipeline
           end
         end
-      }
+      end
 
       if pipeline
         # filter is matched but no match
         pipeline.set_output(@default_collector)
         pipeline
-      else
-        nil
       end
     end
   end

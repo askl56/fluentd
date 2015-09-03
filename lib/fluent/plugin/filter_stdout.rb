@@ -32,13 +32,13 @@ module Fluent
     end
 
     def filter_stream(tag, es)
-      es.each { |time, record|
+      es.each do |time, record|
         begin
           log.write @formatter.format(tag, time, record)
         rescue => e
           router.emit_error_event(tag, time, record, e)
         end
-      }
+      end
       log.flush
       es
     end

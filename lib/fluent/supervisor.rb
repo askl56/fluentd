@@ -45,8 +45,8 @@ module Fluent
       end
 
       def init
-        if @path && @path != "-"
-          @io = File.open(@path, "a")
+        if @path && @path != '-'
+          @io = File.open(@path, 'a')
           if @chuser || @chgroup
             chuid = @chuser ? Supervisor.get_etc_passwd(@chuser).uid : nil
             chgid = @chgroup ? Supervisor.get_etc_group(@chgroup).gid : nil
@@ -66,9 +66,7 @@ module Fluent
       end
 
       def reopen!
-        if @path && @path != "-"
-          @io.reopen(@path, "a")
-        end
+        @io.reopen(@path, 'a') if @path && @path != '-'
         self
       end
 
@@ -93,7 +91,7 @@ module Fluent
         suppress_repeated_stacktrace: true,
         without_source: false,
         use_v1_config: true,
-        supervise: true,
+        supervise: true
       }
     end
 
@@ -116,7 +114,7 @@ module Fluent
       @suppress_config_dump = opt[:suppress_config_dump]
       @without_source = opt[:without_source]
 
-      log_opts = {suppress_repeated_stacktrace: opt[:suppress_repeated_stacktrace]}
+      log_opts = { suppress_repeated_stacktrace: opt[:suppress_repeated_stacktrace] }
       @log = LoggerInitializer.new(@log_path, @log_level, @chuser, @chgroup, log_opts)
       @finished = false
       @main_pid = nil
@@ -143,7 +141,7 @@ module Fluent
             run_engine
             exit 0
           end
-          $log.error "fluentd main process died unexpectedly. restarting." unless @finished
+          $log.error 'fluentd main process died unexpectedly. restarting.' unless @finished
         end
       else
         $log.info "starting fluentd-#{Fluent::VERSION} without supervision"
@@ -222,16 +220,16 @@ module Fluent
       @wait_daemonize_pipe_r = nil
 
       # write pid file
-      File.open(@daemonize, "w") {|f|
+      File.open(@daemonize, 'w') do|f|
         f.write supervisor_pid
-      }
+      end
     end
 
     def finish_daemonize
       if @wait_daemonize_pipe_w
-        STDIN.reopen("/dev/null")
-        STDOUT.reopen("/dev/null", "w")
-        STDERR.reopen("/dev/null", "w")
+        STDIN.reopen('/dev/null')
+        STDOUT.reopen('/dev/null', 'w')
+        STDERR.reopen('/dev/null', 'w')
         @wait_daemonize_pipe_w.write @supervisor_pid.to_s
         @wait_daemonize_pipe_w.close
         @wait_daemonize_pipe_w = nil
@@ -242,27 +240,27 @@ module Fluent
       @rpc_server = RPC::Server.new(@rpc_endpoint, $log)
 
       # built-in RPC for signals
-      @rpc_server.mount_proc('/api/processes.interruptWorkers') { |req, res|
-        $log.debug "fluentd RPC got /api/processes.interruptWorkers request"
+      @rpc_server.mount_proc('/api/processes.interruptWorkers') do |_req, _res|
+        $log.debug 'fluentd RPC got /api/processes.interruptWorkers request'
         supervisor_sigint_handler
         nil
-      }
-      @rpc_server.mount_proc('/api/processes.killWorkers') { |req, res|
-        $log.debug "fluentd RPC got /api/processes.killWorkers request"
+      end
+      @rpc_server.mount_proc('/api/processes.killWorkers') do |_req, _res|
+        $log.debug 'fluentd RPC got /api/processes.killWorkers request'
         supervisor_sigterm_handler
         nil
-      }
-      @rpc_server.mount_proc('/api/plugins.flushBuffers') { |req, res|
-        $log.debug "fluentd RPC got /api/plugins.flushBuffers request"
+      end
+      @rpc_server.mount_proc('/api/plugins.flushBuffers') do |_req, _res|
+        $log.debug 'fluentd RPC got /api/plugins.flushBuffers request'
         supervisor_sigusr1_handler
         nil
-      }
-      @rpc_server.mount_proc('/api/config.reload') { |req, res|
-        $log.debug "fluentd RPC got /api/config.reload request"
-        $log.info "restarting"
+      end
+      @rpc_server.mount_proc('/api/config.reload') do |_req, _res|
+        $log.debug 'fluentd RPC got /api/config.reload request'
+        $log.info 'restarting'
         supervisor_sighup_handler
         nil
-      }
+      end
     end
 
     def run_rpc_server
@@ -282,21 +280,21 @@ module Fluent
       end
 
       if @daemonize && @wait_daemonize_pipe_w
-        STDIN.reopen("/dev/null")
-        STDOUT.reopen("/dev/null", "w")
-        STDERR.reopen("/dev/null", "w")
+        STDIN.reopen('/dev/null')
+        STDOUT.reopen('/dev/null', 'w')
+        STDERR.reopen('/dev/null', 'w')
         @wait_daemonize_pipe_w.close
         @wait_daemonize_pipe_w = nil
       end
 
       Process.waitpid(@main_pid)
       @main_pid = nil
-      ecode = $?.to_i
+      ecode = $CHILD_STATUS.to_i
 
-      $log.info "process finished", code:ecode
+      $log.info 'process finished', code: ecode
 
       if !@finished && Time.now - start_time < 1
-        $log.warn "process died within 1 second. exit."
+        $log.warn 'process died within 1 second. exit.'
         exit ecode
       end
     end
@@ -306,20 +304,20 @@ module Fluent
         block.call
 
       rescue Fluent::ConfigError
-        $log.error "config error", file:@config_path, error:$!.to_s
+        $log.error 'config error', file: @config_path, error: $ERROR_INFO.to_s
         $log.debug_backtrace
         unless @log.stdout?
           console = Fluent::Log.new(STDOUT, @log_level).enable_debug
-          console.error "config error", file:@config_path, error:$!.to_s
+          console.error 'config error', file: @config_path, error: $ERROR_INFO.to_s
           console.debug_backtrace
         end
 
       rescue
-        $log.error "unexpected error", error:$!.to_s
+        $log.error 'unexpected error', error: $ERROR_INFO.to_s
         $log.error_backtrace
         unless @log.stdout?
           console = Fluent::Log.new(STDOUT, @log_level).enable_debug
-          console.error "unexpected error", error:$!.to_s
+          console.error 'unexpected error', error: $ERROR_INFO.to_s
           console.error_backtrace
         end
       end
@@ -329,23 +327,23 @@ module Fluent
 
     def install_supervisor_signal_handlers
       trap :INT do
-        $log.debug "fluentd supervisor process get SIGINT"
+        $log.debug 'fluentd supervisor process get SIGINT'
         supervisor_sigint_handler
       end
 
       trap :TERM do
-        $log.debug "fluentd supervisor process get SIGTERM"
+        $log.debug 'fluentd supervisor process get SIGTERM'
         supervisor_sigterm_handler
       end
 
       trap :HUP do
-        $log.debug "fluentd supervisor process get SIGHUP"
-        $log.info "restarting"
+        $log.debug 'fluentd supervisor process get SIGHUP'
+        $log.info 'restarting'
         supervisor_sighup_handler
       end
 
       trap :USR1 do
-        $log.debug "fluentd supervisor process get SIGUSR1"
+        $log.debug 'fluentd supervisor process get SIGUSR1'
         supervisor_sigusr1_handler
       end
     end
@@ -381,14 +379,14 @@ module Fluent
     def supervisor_sighup_handler
       # Creating new thread due to mutex can't lock
       # in main thread during trap context
-      Thread.new {
+      Thread.new do
         read_config
         apply_system_config
         if pid = @main_pid
           Process.kill(:TERM, pid)
           # don't resuce Erro::ESRSH here (invalid status)
         end
-      }.run
+      end.run
     end
 
     def supervisor_sigusr1_handler
@@ -400,14 +398,14 @@ module Fluent
     end
 
     def read_config
-      $log.info "reading config file", path: @config_path
+      $log.info 'reading config file', path: @config_path
       @config_fname = File.basename(@config_path)
       @config_basedir = File.dirname(@config_path)
       @config_data = File.read(@config_path)
       if @inline_config == '-'
         @config_data << "\n" << STDIN.read
       elsif @inline_config
-        @config_data << "\n" << @inline_config.gsub("\\n","\n")
+        @config_data << "\n" << @inline_config.gsub('\\n', "\n")
       end
       @conf = Fluent::Config.parse(@config_data, @config_fname, @config_basedir, @use_v1_config)
     end
@@ -431,24 +429,24 @@ module Fluent
 
       def apply(supervisor)
         system = self
-        supervisor.instance_eval {
+        supervisor.instance_eval do
           @log.level = @log_level = system.log_level unless system.log_level.nil?
           @suppress_interval = system.emit_error_log_interval unless system.emit_error_log_interval.nil?
           @suppress_config_dump = system.suppress_config_dump unless system.suppress_config_dump.nil?
           @suppress_repeated_stacktrace = system.suppress_repeated_stacktrace unless system.suppress_repeated_stacktrace.nil?
           @without_source = system.without_source unless system.without_source.nil?
           @rpc_endpoint = system.rpc_endpoint unless system.rpc_endpoint.nil?
-        }
+        end
       end
     end
 
     # TODO: this method should be moved to SystemConfig class method
     def apply_system_config
-      systems = @conf.elements.select { |e|
+      systems = @conf.elements.select do |e|
         e.name == 'system'
-      }
+      end
       return if systems.empty?
-      raise ConfigError, "<system> is duplicated. <system> should be only one" if systems.size > 1
+      fail ConfigError, '<system> is duplicated. <system> should be only one' if systems.size > 1
 
       SystemConfig.new(systems.first).apply(self)
     end
@@ -475,19 +473,19 @@ module Fluent
     end
 
     def init_engine
-      init_opts = {suppress_interval: @suppress_interval, suppress_config_dump: @suppress_config_dump, without_source: @without_source}
+      init_opts = { suppress_interval: @suppress_interval, suppress_config_dump: @suppress_config_dump, without_source: @without_source }
       Fluent::Engine.init(init_opts)
 
-      @libs.each {|lib|
+      @libs.each do|lib|
         require lib
-      }
+      end
 
-      @plugin_dirs.each {|dir|
+      @plugin_dirs.each do|dir|
         if Dir.exist?(dir)
           dir = File.expand_path(dir)
           Fluent::Engine.load_plugin_dir(dir)
         end
-      }
+      end
     end
 
     def install_main_process_signal_handlers
@@ -495,43 +493,43 @@ module Fluent
       # But enough safe to limit twice call of Fluent::Engine.stop.
 
       trap :INT do
-        $log.debug "fluentd main process get SIGINT"
+        $log.debug 'fluentd main process get SIGINT'
         unless @finished
           @finished = true
-          $log.debug "getting start to shutdown main process"
+          $log.debug 'getting start to shutdown main process'
           Fluent::Engine.stop
         end
       end
 
       trap :TERM do
-        $log.debug "fluentd main process get SIGTERM"
+        $log.debug 'fluentd main process get SIGTERM'
         unless @finished
           @finished = true
-          $log.debug "getting start to shutdown main process"
+          $log.debug 'getting start to shutdown main process'
           Fluent::Engine.stop
         end
       end
 
       trap :HUP do
         # TODO
-        $log.debug "fluentd main process get SIGHUP"
+        $log.debug 'fluentd main process get SIGHUP'
       end
 
       trap :USR1 do
-        $log.debug "fluentd main process get SIGUSR1"
-        $log.info "force flushing buffered events"
+        $log.debug 'fluentd main process get SIGUSR1'
+        $log.info 'force flushing buffered events'
         @log.reopen!
 
         # Creating new thread due to mutex can't lock
         # in main thread during trap context
-        Thread.new {
+        Thread.new do
           begin
             Fluent::Engine.flush!
-            $log.debug "flushing thread: flushed"
+            $log.debug 'flushing thread: flushed'
           rescue Exception => e
             $log.warn "flushing thread error: #{e}"
           end
-        }.run
+        end.run
       end
     end
 

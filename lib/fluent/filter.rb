@@ -43,20 +43,20 @@ module Fluent
     def shutdown
     end
 
-    def filter(tag, time, record)
-      raise NotImplementedError, "Implement this method in child class"
+    def filter(_tag, _time, _record)
+      fail NotImplementedError, 'Implement this method in child class'
     end
 
     def filter_stream(tag, es)
       new_es = MultiEventStream.new
-      es.each { |time, record|
+      es.each do |time, record|
         begin
           filtered_record = filter(tag, time, record)
           new_es.add(time, filtered_record) if filtered_record
         rescue => e
           router.emit_error_event(tag, time, record, e)
         end
-      }
+      end
       new_es
     end
   end

@@ -16,7 +16,6 @@
 
 module Fluent
   module Config
-
     require 'strscan'
     require 'fluent/config/error'
     require 'fluent/config/literal_parser'
@@ -43,38 +42,28 @@ module Fluent
         root.v1_config = true
 
         spacing
-        unless eof?
-          parse_error! "expected EOF"
-        end
+        parse_error! 'expected EOF' unless eof?
 
-        return root
+        root
       end
 
-      ELEM_SYMBOLS = ['match', 'source', 'filter', 'system']
-      RESERVED_PARAMS = %W(@type @id @label @log_level)
+      ELEM_SYMBOLS = %w(match source filter system)
+      RESERVED_PARAMS = %w(@type @id @label @log_level)
 
       def parse_element(root_element, elem_name, attrs = {}, elems = [])
-        while true
+        loop do
           spacing
           if eof?
-            if root_element
-              break
-            end
+            break if root_element
             parse_error! "expected end tag '</#{elem_name}>' but got end of file"
           end
 
           if skip(/\<\//)
             e_name = scan(ELEMENT_NAME)
             spacing
-            unless skip(/\>/)
-              parse_error! "expected character in tag name"
-            end
-            unless line_end
-              parse_error! "expected end of line after end tag"
-            end
-            if e_name != elem_name
-              parse_error! "unmatched end tag"
-            end
+            parse_error! 'expected character in tag name' unless skip(/\>/)
+            parse_error! 'expected end of line after end tag' unless line_end
+            parse_error! 'unmatched end tag' if e_name != elem_name
             break
 
           elsif skip(/\</)
@@ -82,12 +71,8 @@ module Fluent
             spacing
             e_arg = scan_nonquoted_string(/(?:#{ZERO_OR_MORE_SPACING}\>)/)
             spacing
-            unless skip(/\>/)
-              parse_error! "expected '>'"
-            end
-            unless line_end
-              parse_error! "expected end of line after tag"
-            end
+            parse_error! "expected '>'" unless skip(/\>/)
+            parse_error! 'expected end of line after tag' unless line_end
             e_arg ||= ''
             # call parse_element recursively
             e_attrs, e_elems = parse_element(false, e_name)
@@ -96,7 +81,7 @@ module Fluent
             elems << new_e
 
           elsif root_element && skip(/(\@include|include)#{SPACING}/)
-            if !prev_match.start_with?('@')
+            unless prev_match.start_with?('@')
               $log.warn "'include' is deprecated. Use '@include' instead"
             end
             parse_include(attrs, elems)
@@ -105,15 +90,13 @@ module Fluent
             k = scan_string(SPACING)
             spacing_without_comment
             if prev_match.include?("\n") # support 'tag_mapped' like "without value" configuration
-              attrs[k] = ""
+              attrs[k] = ''
             else
               if k == '@include'
                 parse_include(attrs, elems)
               elsif RESERVED_PARAMS.include?(k)
                 v = parse_literal
-                unless line_end
-                  parse_error! "expected end of line"
-                end
+                parse_error! 'expected end of line' unless line_end
                 attrs[k] = v
               else
                 if k.start_with?('@')
@@ -126,16 +109,14 @@ module Fluent
                 end
 
                 v = parse_literal
-                unless line_end
-                  parse_error! "expected end of line"
-                end
+                parse_error! 'expected end of line' unless line_end
                 attrs[k] = v
               end
             end
           end
         end
 
-        return attrs, elems
+        [attrs, elems]
       end
 
       def parse_include(attrs, elems)
@@ -146,22 +127,22 @@ module Fluent
 
       def eval_include(attrs, elems, uri)
         u = URI.parse(uri)
-        if u.scheme == 'file' || u.path == uri  # file path
+        if u.scheme == 'file' || u.path == uri # file path
           path = u.path
-          if path[0] != ?/
+          if path[0] != '/'
             pattern = File.expand_path("#{@include_basepath}/#{path}")
           else
             pattern = path
           end
 
-          Dir.glob(pattern).sort.each { |path|
+          Dir.glob(pattern).sort.each do |path|
             basepath = File.dirname(path)
             fname = File.basename(path)
             data = File.read(path)
             data.force_encoding('UTF-8')
             ss = StringScanner.new(data)
             V1Parser.new(ss, basepath, fname, @eval_context).parse_element(true, nil, attrs, elems)
-          }
+          end
         else
           require 'open-uri'
           basepath = '/'

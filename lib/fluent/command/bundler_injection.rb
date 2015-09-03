@@ -26,16 +26,14 @@ else
   end
   ruby_bin = RbConfig.ruby
   system("#{ruby_bin} #{bundle_bin} install")
-  unless $?.success?
-    exit $?.exitstatus
-  end
+  exit $CHILD_STATUS.exitstatus unless $CHILD_STATUS.success?
 
   cmdline = [
     ruby_bin,
     bundle_bin,
     'exec',
     ruby_bin,
-    File.expand_path(File.join(File.dirname(__FILE__), 'fluentd.rb')),
+    File.expand_path(File.join(File.dirname(__FILE__), 'fluentd.rb'))
   ] + ARGV
 
   exec *cmdline

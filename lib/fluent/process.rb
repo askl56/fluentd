@@ -51,10 +51,11 @@ module Fluent
       ipr.close
       opw.close
       forward_thread = process_child(ipw, opr, delegate_object)
-      return nil, forward_thread
+      [nil, forward_thread]
     end
 
     private
+
     def read_header(ipr)
       sz = ipr.read(4).unpack('N')[0]
       ipr.read(sz)
@@ -67,10 +68,11 @@ module Fluent
     end
 
     def create_drb_uri
-      "drbunix:"  # TODO
+      'drbunix:' # TODO
     end
 
     private
+
     def process_child(ipw, opr, delegate_object)
       DRb.start_service(create_drb_uri, delegate_object)
       child_uri = DRb.uri
@@ -78,8 +80,8 @@ module Fluent
       send_header(ipw, child_uri)
 
       # override target.emit_stream to write event stream to the pipe
-      fwd = new_forwarder(ipw, 0.5)  # TODO interval
-      Engine.define_singleton_method(:emit_stream) do |tag,es|
+      fwd = new_forwarder(ipw, 0.5) # TODO: interval
+      Engine.define_singleton_method(:emit_stream) do |tag, es|
         fwd.emit(tag, es)
       end
 
@@ -89,27 +91,27 @@ module Fluent
       # override global methods to call parent process
       override_shared_methods(@parent_uri)
 
-      return forward_thread
+      forward_thread
     end
 
     def override_shared_methods(parent_uri)
       broker = DRbObject.new_with_uri(parent_uri)
-      shared_methods.each {|(broker_accessor,target,name)|
+      shared_methods.each do|(broker_accessor, target, name)|
         remote = broker.send(broker_accessor)
-        target.define_singleton_method(name) do |*args,&block|
+        target.define_singleton_method(name) do |*args, &block|
           remote.send(name, *args, &block)
         end
-      }
+      end
     end
 
     def shared_methods
       [
-        #[:engine, Engine, :flush!],
-        #[:engine, Engine, :stop],
+        # [:engine, Engine, :flush!],
+        # [:engine, Engine, :stop],
       ]
     end
 
-    def process_parent(ipr, opw, pid, delegate_object)
+    def process_parent(ipr, opw, pid, _delegate_object)
       child_uri = read_header(ipr)
 
       # read event stream from the pipe and forward to Engine.emit_stream
@@ -117,60 +119,60 @@ module Fluent
 
       # note: don't override methods in parent process
       #       because another process may fork after overriding
-      #override_delegate_methods(delegate_object, child_uri)
+      # override_delegate_methods(delegate_object, child_uri)
 
       # return forwarder for DetachProcessMixin to
       # override target.emit and write event stream to the pipe
-      fwd = new_forwarder(opw, 0.5)  # TODO interval
+      fwd = new_forwarder(opw, 0.5) # TODO: interval
       # note: override emit method on DetachProcessMixin
       forward_thread.define_singleton_method(:forwarder) do
         fwd
       end
 
-      return forward_thread
+      forward_thread
     end
 
-    #def override_delegate_methods(target, child_uri)
+    # def override_delegate_methods(target, child_uri)
     #  remote = DRbObject.new_with_uri(child_uri)
     #  delegate_methods(target).each {|name|
     #    target.define_singleton_method(name) do |*args,&block|
     #      remote.send(name, *args, &block)
     #    end
     #  }
-    #end
+    # end
     #
-    #def delegate_methods(target)
+    # def delegate_methods(target)
     #  target.methods - Object.public_instance_methods
-    #end
+    # end
 
     def output_forward_main(opr, target)
-      read_event_stream(opr) {|tag,es|
-        # FIXME error handling
+      read_event_stream(opr) do|tag, es|
+        # FIXME: error handling
         begin
           target.emit(tag, es, NullOutputChain.instance)
         rescue
-          $log.warn "failed to emit", error:$!.to_s, pid:Process.pid
+          $log.warn 'failed to emit', error: $ERROR_INFO.to_s, pid: Process.pid
           $log.warn_backtrace
         end
-      }
+      end
     rescue
-      $log.error "error on output process forwarding thread", error:$!.to_s, pid:Process.pid
+      $log.error 'error on output process forwarding thread', error: $ERROR_INFO.to_s, pid: Process.pid
       $log.error_backtrace
       raise
     end
 
-    def input_forward_main(ipr, pid)
-      read_event_stream(ipr) {|tag,es|
-        # FIXME error handling
+    def input_forward_main(ipr, _pid)
+      read_event_stream(ipr) do|tag, es|
+        # FIXME: error handling
         begin
           Engine.emit_stream(tag, es)
         rescue
-          $log.warn "failed to emit", error:$!.to_s, pid:Process.pid
+          $log.warn 'failed to emit', error: $ERROR_INFO.to_s, pid: Process.pid
           $log.warn_backtrace
         end
-      }
+      end
     rescue
-      $log.error "error on input process forwarding thread", error:$!.to_s, pid:Process.pid
+      $log.error 'error on input process forwarding thread', error: $ERROR_INFO.to_s, pid: Process.pid
       $log.error_backtrace
       raise
     end
@@ -178,9 +180,9 @@ module Fluent
     def read_event_stream(r, &block)
       u = MessagePack::Unpacker.new(r)
       begin
-        #buf = ''
-        #map = {}
-        #while true
+        # buf = ''
+        # map = {}
+        # while true
         #  r.readpartial(64*1024, buf)
         #  u.feed_each(buf) {|tag,ms|
         #    if msbuf = map[tag]
@@ -196,11 +198,11 @@ module Fluent
         #    }
         #    map.clear
         #  end
-        #end
-        u.each {|tag,ms|
+        # end
+        u.each do|tag, ms|
           es = MessagePackEventStream.new(ms)
           block.call(tag, es)
-        }
+        end
       rescue EOFError
       ensure
         r.close
@@ -208,7 +210,7 @@ module Fluent
     end
 
     def new_forwarder(w, interval)
-      if interval < 0.2  # TODO interval
+      if interval < 0.2 # TODO: interval
         Forwarder.new(w)
       else
         DelayedForwarder.new(w, interval)
@@ -222,7 +224,7 @@ module Fluent
 
       def emit(tag, es)
         ms = es.to_msgpack_stream
-        #[tag, ms].to_msgpack(@w)  # not thread safe
+        # [tag, ms].to_msgpack(@w)  # not thread safe
         @w.write [tag, ms].to_msgpack
       end
     end
@@ -244,17 +246,17 @@ module Fluent
       end
 
       def run
-        while true
+        loop do
           sleep @interval
-          @buffer.keys.each {|tag|
+          @buffer.keys.each do|tag|
             if ms = @buffer.delete(tag)
               [tag, ms].to_msgpack(@w)
-              #@w.write [tag, ms].to_msgpack
+              # @w.write [tag, ms].to_msgpack
             end
-          }
+          end
         end
       rescue
-        $log.error "error on forwerder thread", error:$!.to_s
+        $log.error 'error on forwerder thread', error: $ERROR_INFO.to_s
         $log.error_backtrace
         raise
       end
@@ -274,9 +276,8 @@ module Fluent
     end
   end
 
-
   module DetachProcessImpl
-    def on_detach_process(i)
+    def on_detach_process(_i)
     end
 
     private
@@ -289,7 +290,7 @@ module Fluent
 
         if pid
           # parent process
-          $log.info "detached process", class:self.class, pid:pid
+          $log.info 'detached process', class: self.class, pid: pid
           children << [pid, forward_thread]
           next
         end
@@ -313,12 +314,12 @@ module Fluent
           trap :TERM do
             fin.stop
           end
-          #forward_thread.join  # TODO this thread won't stop because parent doesn't close pipe
+          # forward_thread.join  # TODO this thread won't stop because parent doesn't close pipe
           fin.wait
 
           exit! 0
         ensure
-          $log.error "unknown error while shutting down this child process", error:$!.to_s, pid:Process.pid
+          $log.error 'unknown error while shutting down this child process', error: $ERROR_INFO.to_s, pid: Process.pid
           $log.error_backtrace
         end
 
@@ -328,32 +329,32 @@ module Fluent
       # parent process
       # override shutdown method to kill child processes
       define_singleton_method(:shutdown) do
-        children.each {|pair|
+        children.each do|pair|
           begin
             pid = pair[0]
             forward_thread = pair[1]
             if pid
               Process.kill(:TERM, pid)
-              forward_thread.join   # wait until child closes pipe
+              forward_thread.join # wait until child closes pipe
               Process.waitpid(pid)
               pair[0] = nil
             end
           rescue
-            $log.error "unknown error while shutting down remote child process", error:$!.to_s
+            $log.error 'unknown error while shutting down remote child process', error: $ERROR_INFO.to_s
             $log.error_backtrace
           end
-        }
+        end
       end
 
       # override target.emit and write event stream to the pipe
-      forwarders = children.map {|pair| pair[1].forwarder }
+      forwarders = children.map { |pair| pair[1].forwarder }
       if forwarders.length > 1
         # use roundrobin
         fwd = DetachProcessManager::MultiForwarder.new(forwarders)
       else
         fwd = forwarders[0]
       end
-      define_singleton_method(:emit) do |tag,es,chain|
+      define_singleton_method(:emit) do |tag, es, chain|
         chain.next
         fwd.emit(tag, es)
       end
@@ -368,9 +369,7 @@ module Fluent
 
       def wait
         @mutex.synchronize do
-          until @finished
-            @cond.wait(@mutex, 1.0)
-          end
+          @cond.wait(@mutex, 1.0) until @finished
         end
       end
 
@@ -378,11 +377,11 @@ module Fluent
         return if @finished
         @finished = true
         # Creating new thread due to mutex can't lock in main thread during trap context
-        Thread.new {
+        Thread.new do
           @mutex.synchronize do
             @cond.broadcast
           end
-        }.run
+        end.run
       end
 
       def finished?
@@ -390,7 +389,6 @@ module Fluent
       end
     end
   end
-
 
   module DetachProcessMixin
     include DetachProcessImpl
@@ -428,7 +426,6 @@ module Fluent
       end
     end
   end
-
 
   module DetachMultiProcessMixin
     include DetachProcessImpl
@@ -473,4 +470,3 @@ module Fluent
     end
   end
 end
-

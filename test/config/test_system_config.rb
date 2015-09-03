@@ -24,7 +24,6 @@ module Fluent::Config
   end
 
   class TestSystemConfig < ::Test::Unit::TestCase
-
     def parse_text(text)
       basepath = File.expand_path(File.dirname(__FILE__) + '/../../')
       Fluent::Config.parse(text, '(test)', basepath, true).elements.find { |e| e.name == 'system' }
@@ -50,11 +49,11 @@ module Fluent::Config
       assert_nil(s.instance_variable_get(:@without_source))
     end
 
-    {'log_level' => 'error',
-     'suppress_repeated_stacktrace' => true,
-     'emit_error_log_interval' => 60,
-     'suppress_config_dump' => true,
-     'without_source' => true,
+    { 'log_level' => 'error',
+      'suppress_repeated_stacktrace' => true,
+      'emit_error_log_interval' => 60,
+      'suppress_config_dump' => true,
+      'without_source' => true
     }.each { |k, v|
       test "accepts #{k} parameter" do
         conf = parse_text(<<-EOS)
@@ -71,10 +70,10 @@ module Fluent::Config
       end
     }
 
-    {'foo' => 'bar', 'hoge' => 'fuga'}.each { |k, v|
+    { 'foo' => 'bar', 'hoge' => 'fuga' }.each { |k, v|
       test "should not affect settable parameters with unknown #{k} parameter" do
         s = FakeSupervisor.new
-        sc = Fluent::Supervisor::SystemConfig.new({k => v})
+        sc = Fluent::Supervisor::SystemConfig.new({ k => v })
         sc.apply(s)
         assert_nil(s.instance_variable_get(:@log_level))
         assert_nil(s.instance_variable_get(:@suppress_repeated_stacktrace))
@@ -93,7 +92,7 @@ module Fluent::Config
       s = FakeSupervisor.new
       sc = Fluent::Supervisor::SystemConfig.new(conf)
       sc.apply(s)
-      assert_equal(Fluent::Log::LEVEL_WARN, s.instance_variable_get("@log").level)
+      assert_equal(Fluent::Log::LEVEL_WARN, s.instance_variable_get('@log').level)
     end
   end
 end

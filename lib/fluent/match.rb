@@ -17,9 +17,9 @@
 module Fluent
   class Match
     def initialize(pattern_str, output)
-      patterns = pattern_str.split(/\s+/).map {|str|
+      patterns = pattern_str.split(/\s+/).map do|str|
         MatchPattern.create(str)
-      }
+      end
       if patterns.length == 1
         @pattern = patterns[0]
       else
@@ -44,10 +44,8 @@ module Fluent
     end
 
     def match(tag)
-      if @pattern.match(tag)
-        return true
-      end
-      return false
+      return true if @pattern.match(tag)
+      false
     end
   end
 
@@ -62,7 +60,7 @@ module Fluent
   end
 
   class AllMatchPattern < MatchPattern
-    def match(str)
+    def match(_str)
       true
     end
   end
@@ -76,7 +74,7 @@ module Fluent
 
       i = 0
       while i < pat.length
-        c = pat[i,1]
+        c = pat[i, 1]
 
         if escape
           regex.last << Regexp.escape(c)
@@ -84,38 +82,38 @@ module Fluent
           i += 1
           next
 
-        elsif pat[i,2] == "**"
+        elsif pat[i, 2] == '**'
           # recursive any
           if dot
-            regex.last << "(?![^\\.])"
+            regex.last << '(?![^\\.])'
             dot = false
           end
-          if pat[i+2,1] == "."
-            regex.last << "(?:.*\\.|\\A)"
+          if pat[i + 2, 1] == '.'
+            regex.last << '(?:.*\\.|\\A)'
             i += 3
           else
-            regex.last << ".*"
+            regex.last << '.*'
             i += 2
           end
           next
 
         elsif dot
-          regex.last << "\\."
+          regex.last << '\\.'
           dot = false
         end
 
-        if c == "\\"
+        if c == '\\'
           escape = true
 
-        elsif c == "."
+        elsif c == '.'
           dot = true
 
-        elsif c == "*"
+        elsif c == '*'
           # any
-          regex.last << "[^\\.]*"
+          regex.last << '[^\\.]*'
 
           # TODO
-          #elsif c == "["
+          # elsif c == "["
           #  # character class
           #  chars = ''
           #  while i < pat.length
@@ -129,16 +127,16 @@ module Fluent
           #  end
           #  regex.last << '['+Regexp.escape(chars).gsub("\\-",'-')+']'
 
-        elsif c == "{"
+        elsif c == '{'
           # or
           stack.push []
           regex.push ''
 
-        elsif c == "}" && !stack.empty?
+        elsif c == '}' && !stack.empty?
           stack.last << regex.pop
-          regex.last << Regexp.union(*stack.pop.map {|r| Regexp.new(r) }).to_s
+          regex.last << Regexp.union(*stack.pop.map { |r| Regexp.new(r) }).to_s
 
-        elsif c == "," && !stack.empty?
+        elsif c == ',' && !stack.empty?
           stack.last << regex.pop
           regex.push ''
 
@@ -157,11 +155,11 @@ module Fluent
         regex.last << Regexp.union(*stack.pop).to_s
       end
 
-      @regex = Regexp.new("\\A"+regex.last+"\\Z")
+      @regex = Regexp.new('\\A' + regex.last + '\\Z')
     end
 
     def match(str)
-      @regex.match(str) != nil
+      !@regex.match(str).nil?
     end
   end
 
@@ -171,7 +169,7 @@ module Fluent
     end
 
     def match(str)
-      @patterns.any? {|pattern| pattern.match(str) }
+      @patterns.any? { |pattern| pattern.match(str) }
     end
   end
 end

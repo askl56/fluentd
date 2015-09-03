@@ -7,23 +7,23 @@ class ForwardOutputTest < Test::Unit::TestCase
   end
 
   TARGET_HOST = '127.0.0.1'
-  TARGET_PORT = 13999
-  CONFIG = %[
+  TARGET_PORT = 13_999
+  CONFIG = %(
     send_timeout 51
     <server>
       name test
       host #{TARGET_HOST}
       port #{TARGET_PORT}
     </server>
-  ]
+  )
 
-  TARGET_CONFIG = %[
+  TARGET_CONFIG = %(
     port #{TARGET_PORT}
     bind #{TARGET_HOST}
-  ]
+  )
 
-  def create_driver(conf=CONFIG)
-    Fluent::Test::OutputTestDriver.new(Fluent::ForwardOutput) {
+  def create_driver(conf = CONFIG)
+    Fluent::Test::OutputTestDriver.new(Fluent::ForwardOutput) do
       attr_reader :responses, :exceptions
 
       def initialize
@@ -39,7 +39,7 @@ class ForwardOutputTest < Test::Unit::TestCase
         @exceptions << e
         raise e
       end
-    }.configure(conf)
+    end.configure(conf)
   end
 
   def test_configure
@@ -49,9 +49,9 @@ class ForwardOutputTest < Test::Unit::TestCase
     assert_equal :udp, d.instance.heartbeat_type
     assert_equal 1, nodes.length
     node = nodes.first
-    assert_equal "test", node.name
+    assert_equal 'test', node.name
     assert_equal '127.0.0.1', node.host
-    assert_equal 13999, node.port
+    assert_equal 13_999, node.port
   end
 
   def test_configure_tcp_heartbeat
@@ -79,13 +79,13 @@ class ForwardOutputTest < Test::Unit::TestCase
   end
 
   def test_phi_failure_detector
-    d = create_driver(CONFIG + %[phi_failure_detector false \n phi_threshold 0])
+    d = create_driver(CONFIG + %(phi_failure_detector false \n phi_threshold 0))
     node = d.instance.nodes.first
-    stub(node.failure).phi { raise 'Should not be called' }
+    stub(node.failure).phi { fail 'Should not be called' }
     node.tick
     assert_equal node.available, true
 
-    d = create_driver(CONFIG + %[phi_failure_detector true \n phi_threshold 0])
+    d = create_driver(CONFIG + %(phi_failure_detector true \n phi_threshold 0))
     node = d.instance.nodes.first
     node.tick
     assert_equal node.available, false
@@ -97,10 +97,10 @@ class ForwardOutputTest < Test::Unit::TestCase
     assert_equal false, d.instance.require_ack_response
     assert_equal 190, d.instance.ack_response_timeout
 
-    d = create_driver(CONFIG + %[
+    d = create_driver(CONFIG + %(
       require_ack_response true
       ack_response_timeout 2s
-    ])
+    ))
     assert d.instance.extend_internal_protocol
     assert d.instance.require_ack_response
     assert_equal 2, d.instance.ack_response_timeout
@@ -109,13 +109,13 @@ class ForwardOutputTest < Test::Unit::TestCase
   def test_send_to_a_node_supporting_responses
     target_input_driver = create_target_input_driver(true)
 
-    d = create_driver(CONFIG + %[flush_interval 1s])
+    d = create_driver(CONFIG + %(flush_interval 1s))
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
 
     records = [
-      {"a" => 1},
-      {"a" => 2}
+      { 'a' => 1 },
+      { 'a' => 2 }
     ]
     d.register_run_post_condition do
       d.instance.responses.length == 1
@@ -140,13 +140,13 @@ class ForwardOutputTest < Test::Unit::TestCase
   def test_send_to_a_node_not_supporting_responses
     target_input_driver = create_target_input_driver
 
-    d = create_driver(CONFIG + %[flush_interval 1s])
+    d = create_driver(CONFIG + %(flush_interval 1s))
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
 
     records = [
-      {"a" => 1},
-      {"a" => 2}
+      { 'a' => 1 },
+      { 'a' => 2 }
     ]
     d.register_run_post_condition do
       d.instance.responses.length == 1
@@ -171,17 +171,17 @@ class ForwardOutputTest < Test::Unit::TestCase
   def test_require_a_node_supporting_responses_to_respond_with_ack
     target_input_driver = create_target_input_driver(true)
 
-    d = create_driver(CONFIG + %[
+    d = create_driver(CONFIG + %(
       flush_interval 1s
       require_ack_response true
       ack_response_timeout 1s
-    ])
+    ))
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
 
     records = [
-      {"a" => 1},
-      {"a" => 2}
+      { 'a' => 1 },
+      { 'a' => 2 }
     ]
     d.register_run_post_condition do
       d.instance.responses.length == 1
@@ -200,7 +200,7 @@ class ForwardOutputTest < Test::Unit::TestCase
     assert_equal ['test', time, records[1]], emits[1]
 
     assert_equal 1, d.instance.responses.length
-    assert d.instance.responses[0].has_key?('ack')
+    assert d.instance.responses[0].key?('ack')
     assert_empty d.instance.exceptions
   end
 
@@ -208,17 +208,17 @@ class ForwardOutputTest < Test::Unit::TestCase
     # in_forward, that doesn't support ack feature, and keep connection alive
     target_input_driver = create_target_input_driver
 
-    d = create_driver(CONFIG + %[
+    d = create_driver(CONFIG + %(
       flush_interval 1s
       require_ack_response true
       ack_response_timeout 1s
-    ])
+    ))
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
 
     records = [
-      {"a" => 1},
-      {"a" => 2}
+      { 'a' => 1 },
+      { 'a' => 2 }
     ]
     d.register_run_post_condition do
       d.instance.responses.length == 1
@@ -249,17 +249,17 @@ class ForwardOutputTest < Test::Unit::TestCase
     # in_forward, that doesn't support ack feature, and disconnect immediately
     target_input_driver = create_target_input_driver(false, true)
 
-    d = create_driver(CONFIG + %[
+    d = create_driver(CONFIG + %(
       flush_interval 1s
       require_ack_response true
       ack_response_timeout 5s
-    ])
+    ))
 
-    time = Time.parse("2011-01-02 13:14:15 UTC").to_i
+    time = Time.parse('2011-01-02 13:14:15 UTC').to_i
 
     records = [
-      {"a" => 1},
-      {"a" => 2}
+      { 'a' => 1 },
+      { 'a' => 2 }
     ]
     d.register_run_post_condition do
       d.instance.responses.length == 1
@@ -285,11 +285,11 @@ class ForwardOutputTest < Test::Unit::TestCase
     assert_equal false, node.available # node is regarded as unavailable when unexpected EOF
   end
 
-  def create_target_input_driver(do_respond=false, disconnect=false, conf=TARGET_CONFIG)
+  def create_target_input_driver(do_respond = false, disconnect = false, conf = TARGET_CONFIG)
     require 'fluent/plugin/in_forward'
 
-    DummyEngineDriver.new(Fluent::ForwardInput) {
-      handler_class = Class.new(Fluent::ForwardInput::Handler) { |klass|
+    DummyEngineDriver.new(Fluent::ForwardInput) do
+      handler_class = Class.new(Fluent::ForwardInput::Handler) do |_klass|
         attr_reader :chunk_counter # for checking if received data is successfully deserialized
 
         def initialize(sock, log, on_message)
@@ -306,7 +306,7 @@ class ForwardOutputTest < Test::Unit::TestCase
             @sock.close
           end
         else
-          def write(data)
+          def write(_data)
             # do nothing
           end
         end
@@ -314,11 +314,11 @@ class ForwardOutputTest < Test::Unit::TestCase
         def close
           @sock.close
         end
-      }
+      end
 
       define_method(:start) do
         @thread = Thread.new do
-          Socket.tcp_server_loop(@host, @port) do |sock, client_addrinfo|
+          Socket.tcp_server_loop(@host, @port) do |sock, _client_addrinfo|
             begin
               handler = handler_class.new(sock, @log, method(:on_message))
               loop do
@@ -331,7 +331,7 @@ class ForwardOutputTest < Test::Unit::TestCase
                 handler.close
                 sock = nil
               end
-              sleep  # wait for connection to be closed by client
+              sleep # wait for connection to be closed by client
             ensure
               sock.close if sock
             end
@@ -343,7 +343,7 @@ class ForwardOutputTest < Test::Unit::TestCase
         @thread.kill
         @thread.join
       end
-    }.configure(conf).inject_router()
+    end.configure(conf).inject_router
   end
 
   def test_heartbeat_type_none
@@ -355,7 +355,7 @@ class ForwardOutputTest < Test::Unit::TestCase
     assert_nil d.instance.instance_variable_get(:@loop)   # no HeartbeatHandler, or HeartbeatRequestTimer
     assert_nil d.instance.instance_variable_get(:@thread) # no HeartbeatHandler, or HeartbeatRequestTimer
 
-    stub(node.failure).phi { raise 'Should not be called' }
+    stub(node.failure).phi { fail 'Should not be called' }
     node.tick
     assert_equal node.available, true
   end
@@ -384,11 +384,11 @@ class ForwardOutputTest < Test::Unit::TestCase
 
     def emits
       all = []
-      @engine.emit_streams.each {|tag,events|
-        events.each {|time,record|
+      @engine.emit_streams.each do|tag, events|
+        events.each do|time, record|
           all << [tag, time, record]
-        }
-      }
+        end
+      end
       all
     end
 

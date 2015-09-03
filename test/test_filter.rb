@@ -15,11 +15,11 @@ class FilterTest < Test::Unit::TestCase
 
   def emit(klass, msgs, conf = '')
     d = create_driver(klass, conf)
-    d.run {
-      msgs.each {|msg|
-        d.emit({'message' => msg}, @time)
-      }
-    }.filtered
+    d.run do
+      msgs.each do|msg|
+        d.emit({ 'message' => msg }, @time)
+      end
+    end.filtered
   end
 
   sub_test_case 'configure' do
@@ -35,8 +35,8 @@ class FilterTest < Test::Unit::TestCase
     end
 
     test 'null filter' do
-      null_filter = Class.new(Fluent::Filter) do |c|
-        def filter(tag, time, record)
+      null_filter = Class.new(Fluent::Filter) do |_c|
+        def filter(_tag, _time, _record)
           nil
         end
       end
@@ -45,8 +45,8 @@ class FilterTest < Test::Unit::TestCase
     end
 
     test 'pass filter' do
-      pass_filter = Class.new(Fluent::Filter) do |c|
-        def filter(tag, time, record)
+      pass_filter = Class.new(Fluent::Filter) do |_c|
+        def filter(_tag, _time, record)
           record
         end
       end
@@ -57,8 +57,8 @@ class FilterTest < Test::Unit::TestCase
 
   sub_test_case 'filter_stream' do
     test 'null filter' do
-      null_filter = Class.new(Fluent::Filter) do |c|
-        def filter_stream(tag, es)
+      null_filter = Class.new(Fluent::Filter) do |_c|
+        def filter_stream(_tag, _es)
           MultiEventStream.new
         end
       end
@@ -67,8 +67,8 @@ class FilterTest < Test::Unit::TestCase
     end
 
     test 'pass filter' do
-      pass_filter = Class.new(Fluent::Filter) do |c|
-        def filter_stream(tag, es)
+      pass_filter = Class.new(Fluent::Filter) do |_c|
+        def filter_stream(_tag, es)
           es
         end
       end

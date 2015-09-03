@@ -32,7 +32,7 @@ module Fluent
     def shutdown
     end
 
-    def emit(tag, es, chain)
+    def emit(_tag, _es, chain)
       chain.next
     end
   end

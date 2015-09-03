@@ -28,12 +28,12 @@ module Fluent
       super
     end
 
-    EMPTY_GIF_IMAGE = "GIF89a\u0001\u0000\u0001\u0000\x80\xFF\u0000\xFF\xFF\xFF\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;".force_encoding("UTF-8")
+    EMPTY_GIF_IMAGE = "GIF89a\u0001\u0000\u0001\u0000\x80\xFF\u0000\xFF\xFF\xFF\u0000\u0000\u0000,\u0000\u0000\u0000\u0000\u0001\u0000\u0001\u0000\u0000\u0002\u0002D\u0001\u0000;".force_encoding('UTF-8')
 
     config_param :port, :integer, default: 9880
     config_param :bind, :string, default: '0.0.0.0'
-    config_param :body_size_limit, :size, default: 32*1024*1024  # TODO default
-    config_param :keepalive_timeout, :time, default: 10   # TODO default
+    config_param :body_size_limit, :size, default: 32 * 1024 * 1024 # TODO: default
+    config_param :keepalive_timeout, :time, default: 10 # TODO: default
     config_param :backlog, :integer, default: nil
     config_param :add_http_headers, :bool, default: false
     config_param :add_remote_addr, :bool, default: false
@@ -73,11 +73,9 @@ module Fluent
       end
 
       def on_timer
-        @cons.each_pair {|sock,val|
-          if sock.step_idle > @timeout
-            sock.close
-          end
-        }
+        @cons.each_pair do|sock, _val|
+          sock.close if sock.step_idle > @timeout
+        end
       end
     end
 
@@ -88,7 +86,7 @@ module Fluent
       detach_multi_process do
         super
         @km = KeepaliveManager.new(@keepalive_timeout)
-        #@lsock = Coolio::TCPServer.new(@bind, @port, Handler, @km, method(:on_request), @body_size_limit)
+        # @lsock = Coolio::TCPServer.new(@bind, @port, Handler, @km, method(:on_request), @body_size_limit)
         @lsock = Coolio::TCPServer.new(lsock, nil, Handler, @km, method(:on_request),
                                        @body_size_limit, @format, log,
                                        @cors_allow_origins)
@@ -103,7 +101,7 @@ module Fluent
     end
 
     def shutdown
-      @loop.watchers.each {|w| w.detach }
+      @loop.watchers.each(&:detach)
       @loop.stop
       @lsock.close
       @thread.join
@@ -112,36 +110,32 @@ module Fluent
     def run
       @loop.run(@blocking_timeout)
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
     def on_request(path_info, params)
       begin
-        path = path_info[1..-1]  # remove /
+        path = path_info[1..-1] # remove /
         tag = path.split('/').join('.')
         record_time, record = parse_params(params)
 
         # Skip nil record
         if record.nil?
           if @respond_with_empty_img
-            return ["200 OK", {'Content-type'=>'image/gif; charset=utf-8'}, EMPTY_GIF_IMAGE]
+            return ['200 OK', { 'Content-type' => 'image/gif; charset=utf-8' }, EMPTY_GIF_IMAGE]
           else
-            return ["200 OK", {'Content-type'=>'text/plain'}, ""]
+            return ['200 OK', { 'Content-type' => 'text/plain' }, '']
           end
         end
 
         if @add_http_headers
-          params.each_pair { |k,v|
-            if k.start_with?("HTTP_")
-              record[k] = v
-            end
-          }
+          params.each_pair do |k, v|
+            record[k] = v if k.start_with?('HTTP_')
+          end
         end
 
-        if @add_remote_addr
-          record['REMOTE_ADDR'] = params['REMOTE_ADDR']
-        end
+        record['REMOTE_ADDR'] = params['REMOTE_ADDR'] if @add_remote_addr
 
         time = if param_time = params['time']
                  param_time = param_time.to_i
@@ -150,30 +144,30 @@ module Fluent
                  record_time.nil? ? Engine.now : record_time
                end
       rescue
-        return ["400 Bad Request", {'Content-type'=>'text/plain'}, "400 Bad Request\n#{$!}\n"]
+        return ['400 Bad Request', { 'Content-type' => 'text/plain' }, "400 Bad Request\n#{$ERROR_INFO}\n"]
       end
 
-      # TODO server error
+      # TODO: server error
       begin
         # Support batched requests
         if record.is_a?(Array)
           mes = MultiEventStream.new
           record.each do |single_record|
-            single_time = single_record.delete("time") || time
+            single_time = single_record.delete('time') || time
             mes.add(single_time, single_record)
           end
           router.emit_stream(tag, mes)
-	else
+        else
           router.emit(tag, time, record)
         end
       rescue
-        return ["500 Internal Server Error", {'Content-type'=>'text/plain'}, "500 Internal Server Error\n#{$!}\n"]
+        return ['500 Internal Server Error', { 'Content-type' => 'text/plain' }, "500 Internal Server Error\n#{$ERROR_INFO}\n"]
       end
 
       if @respond_with_empty_img
-        return ["200 OK", {'Content-type'=>'image/gif; charset=utf-8'}, EMPTY_GIF_IMAGE]
+        return ['200 OK', { 'Content-type' => 'image/gif; charset=utf-8' }, EMPTY_GIF_IMAGE]
       else
-        return ["200 OK", {'Content-type'=>'text/plain'}, ""]
+        return ['200 OK', { 'Content-type' => 'text/plain' }, '']
       end
     end
 
@@ -185,21 +179,21 @@ module Fluent
                elsif js = params['json']
                  JSON.parse(js)
                else
-                 raise "'json' or 'msgpack' parameter is required"
+                 fail "'json' or 'msgpack' parameter is required"
                end
-      return nil, record
+      [nil, record]
     end
 
     EVENT_RECORD_PARAMETER = '_event_record'
 
     def parse_params_with_parser(params)
       if content = params[EVENT_RECORD_PARAMETER]
-        @parser.parse(content) { |time, record|
-          raise "Received event is not #{@format}: #{content}" if record.nil?
+        @parser.parse(content) do |time, record|
+          fail "Received event is not #{@format}: #{content}" if record.nil?
           return time, record
-        }
+        end
       else
-        raise "'#{EVENT_RECORD_PARAMETER}' parameter is required"
+        fail "'#{EVENT_RECORD_PARAMETER}' parameter is required"
       end
     end
 
@@ -235,7 +229,7 @@ module Fluent
         @idle = 0
         @parser << data
       rescue
-        @log.warn "unexpected error", error:$!.to_s
+        @log.warn 'unexpected error', error: $ERROR_INFO.to_s
         @log.warn_backtrace
         close
       end
@@ -254,9 +248,9 @@ module Fluent
           @keep_alive = false
         end
         @env = {}
-        @content_type = ""
-        headers.each_pair {|k,v|
-          @env["HTTP_#{k.gsub('-','_').upcase}"] = v
+        @content_type = ''
+        headers.each_pair do|k, v|
+          @env["HTTP_#{k.tr('-', '_').upcase}"] = v
           case k
           when /Expect/i
             expect = v
@@ -271,18 +265,18 @@ module Fluent
               @keep_alive = true
             end
           when /Origin/i
-            @origin  = v
+            @origin = v
           end
-        }
+        end
         if expect
           if expect == '100-continue'
             if !size || size < @body_size_limit
-              send_response_nobody("100 Continue", {})
+              send_response_nobody('100 Continue', {})
             else
-              send_response_and_close("413 Request Entity Too Large", {}, "Too large")
+              send_response_and_close('413 Request Entity Too Large', {}, 'Too large')
             end
           else
-            send_response_and_close("417 Expectation Failed", {}, "")
+            send_response_and_close('417 Expectation Failed', {}, '')
           end
         end
       end
@@ -290,7 +284,7 @@ module Fluent
       def on_body(chunk)
         if @body.bytesize + chunk.bytesize > @body_size_limit
           unless closing?
-            send_response_and_close("413 Request Entity Too Large", {}, "Too large")
+            send_response_and_close('413 Request Entity Too Large', {}, 'Too large')
           end
           return
         end
@@ -306,7 +300,7 @@ module Fluent
         # restrictions and white listed origins through @cors_allow_origins.
         unless @cors_allow_origins.nil?
           unless @cors_allow_origins.include?(@origin)
-            send_response_and_close("403 Forbidden", {'Connection' => 'close'}, "")
+            send_response_and_close('403 Forbidden', { 'Connection' => 'close' }, '')
             return
           end
         end
@@ -321,7 +315,7 @@ module Fluent
         elsif @content_type =~ /^application\/x-www-form-urlencoded/
           params.update WEBrick::HTTPUtils.parse_query(@body)
         elsif @content_type =~ /^multipart\/form-data; boundary=(.+)/
-          boundary = WEBrick::HTTPUtils.dequote($1)
+          boundary = WEBrick::HTTPUtils.dequote(Regexp.last_match(1))
           params.update WEBrick::HTTPUtils.parse_form_data(@body, boundary)
         elsif @content_type =~ /^application\/json/
           params['json'] = @body
@@ -359,10 +353,10 @@ module Fluent
         header['Content-length'] ||= body.bytesize
         header['Content-type'] ||= 'text/plain'
 
-        data = %[HTTP/1.1 #{code}\r\n]
-        header.each_pair {|k,v|
+        data = %(HTTP/1.1 #{code}\r\n)
+        header.each_pair do|k, v|
           data << "#{k}: #{v}\r\n"
-        }
+        end
         data << "\r\n"
         write data
 
@@ -370,10 +364,10 @@ module Fluent
       end
 
       def send_response_nobody(code, header)
-        data = %[HTTP/1.1 #{code}\r\n]
-        header.each_pair {|k,v|
+        data = %(HTTP/1.1 #{code}\r\n)
+        header.each_pair do|k, v|
           data << "#{k}: #{v}\r\n"
-        }
+        end
         data << "\r\n"
         write data
       end

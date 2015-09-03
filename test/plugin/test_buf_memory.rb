@@ -11,13 +11,13 @@ module FluentMemoryBufferTest
     def test_init
       chunk = Fluent::MemoryBufferChunk.new('key')
       assert_equal 'key', chunk.key
-      assert_equal '', chunk.instance_eval{ @data }
-      assert_equal 'ASCII-8BIT', chunk.instance_eval{ @data }.encoding.to_s
+      assert_equal '', chunk.instance_eval { @data }
+      assert_equal 'ASCII-8BIT', chunk.instance_eval { @data }.encoding.to_s
       assert chunk.unique_id # non nil
 
       chunk2 = Fluent::MemoryBufferChunk.new('initdata', 'data')
       assert_equal 'initdata', chunk2.key
-      assert_equal 'data', chunk2.instance_eval{ @data }
+      assert_equal 'data', chunk2.instance_eval { @data }
     end
 
     def test_buffer_chunk_interface
@@ -38,23 +38,23 @@ module FluentMemoryBufferTest
       chunk = Fluent::MemoryBufferChunk.new('key')
       assert chunk.empty?
 
-      chunk.instance_eval{ @data = "non empty" }
+      chunk.instance_eval { @data = 'non empty' }
       assert !(chunk.empty?)
     end
 
     def test_append_data_and_size
       chunk = Fluent::MemoryBufferChunk.new('key')
-      assert_equal '', chunk.instance_eval{ @data }
+      assert_equal '', chunk.instance_eval { @data }
 
       chunk << "foo bar baz\n".force_encoding('UTF-8')
-      assert_equal "foo bar baz\n", chunk.instance_eval{ @data }
-      assert_equal 'ASCII-8BIT', chunk.instance_eval{ @data }.encoding.to_s
+      assert_equal "foo bar baz\n", chunk.instance_eval { @data }
+      assert_equal 'ASCII-8BIT', chunk.instance_eval { @data }.encoding.to_s
 
       assert_equal 12, chunk.size # bytesize
 
       chunk << "日本語Japanese\n".force_encoding('UTF-8')
-      assert_equal "foo bar baz\n日本語Japanese\n".force_encoding('ASCII-8BIT'), chunk.instance_eval{ @data }
-      assert_equal 'ASCII-8BIT', chunk.instance_eval{ @data }.encoding.to_s
+      assert_equal "foo bar baz\n日本語Japanese\n".force_encoding('ASCII-8BIT'), chunk.instance_eval { @data }
+      assert_equal 'ASCII-8BIT', chunk.instance_eval { @data }.encoding.to_s
 
       assert_equal 30, chunk.size # bytesize
     end
@@ -69,7 +69,7 @@ module FluentMemoryBufferTest
       chunk.purge
       chunk.purge
       chunk.purge
-      assert_equal 'data', chunk.instance_eval{ @data }
+      assert_equal 'data', chunk.instance_eval { @data }
     end
 
     def test_read_just_returns_data
@@ -95,9 +95,9 @@ module FluentMemoryBufferTest
     end
 
     def test_msgpack_each
-      d0 = MessagePack.pack([[1, "foo"], [2, "bar"], [3, "baz"]])
-      d1 = MessagePack.pack({"key1" => "value1", "key2" => "value2"})
-      d2 = MessagePack.pack("string1")
+      d0 = MessagePack.pack([[1, 'foo'], [2, 'bar'], [3, 'baz']])
+      d1 = MessagePack.pack('key1' => 'value1', 'key2' => 'value2')
+      d2 = MessagePack.pack('string1')
       d3 = MessagePack.pack(1)
       d4 = MessagePack.pack(nil)
       chunk = Fluent::MemoryBufferChunk.new('key', d0 + d1 + d2 + d3 + d4)
@@ -108,9 +108,9 @@ module FluentMemoryBufferTest
       end
 
       assert_equal 5, store.size
-      assert_equal [[1, "foo"], [2, "bar"], [3, "baz"]], store[0]
-      assert_equal({"key1" => "value1", "key2" => "value2"}, store[1])
-      assert_equal "string1", store[2]
+      assert_equal [[1, 'foo'], [2, 'bar'], [3, 'baz']], store[0]
+      assert_equal({ 'key1' => 'value1', 'key2' => 'value2' }, store[1])
+      assert_equal 'string1', store[2]
       assert_equal 1, store[3]
       assert_equal nil, store[4]
     end
@@ -131,7 +131,7 @@ module FluentMemoryBufferTest
       def write(chunk)
         @written ||= []
         @written.push chunk
-        "return value"
+        'return value'
       end
     end
 
@@ -141,8 +141,8 @@ module FluentMemoryBufferTest
 
       # before_shutdown flushes all chunks in @map and @queue
 
-      c1 = [ buf.new_chunk('k0'), buf.new_chunk('k1'), buf.new_chunk('k2'), buf.new_chunk('k3') ]
-      c2 = [ buf.new_chunk('q0'), buf.new_chunk('q1') ]
+      c1 = [buf.new_chunk('k0'), buf.new_chunk('k1'), buf.new_chunk('k2'), buf.new_chunk('k3')]
+      c2 = [buf.new_chunk('q0'), buf.new_chunk('q1')]
 
       buf.instance_eval do
         @map = {
@@ -162,18 +162,18 @@ module FluentMemoryBufferTest
 
       buf.instance_eval do
         @enqueue_hook_times = 0
-        def enqueue(chunk)
+        def enqueue(_chunk)
           @enqueue_hook_times += 1
         end
       end
-      assert_equal 0, buf.instance_eval{ @enqueue_hook_times }
+      assert_equal 0, buf.instance_eval { @enqueue_hook_times }
 
       out = DummyOutput.new
       assert_equal nil, out.written
 
       buf.before_shutdown(out)
 
-      assert_equal 3, buf.instance_eval{ @enqueue_hook_times } # k0, k1, k2
+      assert_equal 3, buf.instance_eval { @enqueue_hook_times } # k0, k1, k2
       assert_equal 5, out.written.size
       assert_equal [c2[0], c2[1], c1[0], c1[1], c1[2]], out.written
     end

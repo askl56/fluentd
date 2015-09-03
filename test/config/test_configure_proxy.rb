@@ -74,24 +74,24 @@ module Fluent::Config
       sub_test_case '#config_param / #config_set_default / #config_argument' do
         test 'does not permit config_set_default for param w/ :default option' do
           proxy = Fluent::Config::ConfigureProxy.new(:section)
-          proxy.config_param(:name, :string, default: "name1")
-          assert_raise(ArgumentError) { proxy.config_set_default(:name, "name2") }
+          proxy.config_param(:name, :string, default: 'name1')
+          assert_raise(ArgumentError) { proxy.config_set_default(:name, 'name2') }
         end
 
         test 'does not permit default value specification twice' do
           proxy = Fluent::Config::ConfigureProxy.new(:section)
           proxy.config_param(:name, :string)
-          proxy.config_set_default(:name, "name1")
-          assert_raise(ArgumentError) { proxy.config_set_default(:name, "name2") }
+          proxy.config_set_default(:name, 'name1')
+          assert_raise(ArgumentError) { proxy.config_set_default(:name, 'name2') }
         end
 
         test 'does not permit default value specification twice, even on config_argument' do
           proxy = Fluent::Config::ConfigureProxy.new(:section)
           proxy.config_param(:name, :string)
-          proxy.config_set_default(:name, "name1")
+          proxy.config_set_default(:name, 'name1')
 
           proxy.config_argument(:name)
-          assert_raise(ArgumentError) { proxy.config_argument(:name, default: "name2") }
+          assert_raise(ArgumentError) { proxy.config_argument(:name, default: 'name2') }
         end
       end
     end

@@ -14,7 +14,6 @@
 #    limitations under the License.
 #
 module Fluent
-
   require 'delegate'
 
   require 'fluent/agent'
@@ -41,7 +40,7 @@ module Fluent
   # Next step: 'fluentd/label.rb'
   #
   class RootAgent < Agent
-    ERROR_LABEL = "@ERROR".freeze # @ERROR is built-in error label
+    ERROR_LABEL = '@ERROR'.freeze # @ERROR is built-in error label
 
     def initialize(opts = {})
       super
@@ -64,9 +63,9 @@ module Fluent
 
       # initialize <label> elements before configuring all plugins to avoid 'label not found' in input, filter and output.
       label_configs = {}
-      conf.elements.select { |e| e.name == 'label' }.each { |e|
+      conf.elements.select { |e| e.name == 'label' }.each do |e|
         name = e.arg
-        raise ConfigError, "Missing symbol argument on <label> directive" if name.empty?
+        fail ConfigError, 'Missing symbol argument on <label> directive' if name.empty?
 
         if name == ERROR_LABEL
           error_label_config = e
@@ -74,7 +73,7 @@ module Fluent
           add_label(name)
           label_configs[name] = e
         end
-      }
+      end
       # Call 'configure' here to avoid 'label not found'
       label_configs.each { |name, e| @labels[name].configure(e) }
       setup_error_label(error_label_config) if error_label_config
@@ -85,11 +84,11 @@ module Fluent
       if @without_source
         log.info "'--without-source' is applied. Ignore <source> sections"
       else
-        conf.elements.select { |e| e.name == 'source' }.each { |e|
+        conf.elements.select { |e| e.name == 'source' }.each do |e|
           type = e['@type'] || e['type']
-          raise ConfigError, "Missing 'type' parameter on <source> directive" unless type
+          fail ConfigError, "Missing 'type' parameter on <source> directive" unless type
           add_source(type, e)
-        }
+        end
       end
     end
 
@@ -103,32 +102,32 @@ module Fluent
     def start
       super
 
-      @labels.each { |n, l|
+      @labels.each do |_n, l|
         l.start
-      }
+      end
 
-      @inputs.each { |i|
+      @inputs.each do |i|
         i.start
         @started_inputs << i
-      }
+      end
     end
 
     def shutdown
       # Shutdown Input plugin first to prevent emitting to terminated Output plugin
-      @started_inputs.map { |i|
+      @started_inputs.map do |i|
         Thread.new do
           begin
             i.shutdown
           rescue => e
-            log.warn "unexpected error while shutting down input plugin", plugin: i.class, plugin_id: i.plugin_id, error_class: e.class, error: e
+            log.warn 'unexpected error while shutting down input plugin', plugin: i.class, plugin_id: i.plugin_id, error_class: e.class, error: e
             log.warn_backtrace
           end
         end
-      }.each { |t| t.join }
+      end.each(&:join)
 
-      @labels.each { |n, l|
+      @labels.each do |_n, l|
         l.shutdown
-      }
+      end
 
       super
     end
@@ -139,7 +138,7 @@ module Fluent
     end
 
     def add_source(type, conf)
-      log.info "adding source", type: type
+      log.info 'adding source', type: type
 
       input = Plugin.new_input(type)
       # <source> emits events to the top-level event router (RootAgent#event_router).
@@ -162,35 +161,35 @@ module Fluent
       if label = @labels[label_name]
         label
       else
-        raise ArgumentError, "#{label_name} label not found"
+        fail ArgumentError, "#{label_name} label not found"
       end
     end
 
     def emit_error_event(tag, time, record, error)
-      error_info = {error_class: error.class, error: error.to_s, tag: tag, time: time}
+      error_info = { error_class: error.class, error: error.to_s, tag: tag, time: time }
       if @error_collector
         # A record is not included in the logs because <@ERROR> handles it. This warn is for the notification
-        log.warn "send an error event to @ERROR:", error_info
+        log.warn 'send an error event to @ERROR:', error_info
         @error_collector.emit(tag, time, record)
       else
         error_info[:record] = record
-        log.warn "dump an error event:", error_info
+        log.warn 'dump an error event:', error_info
       end
     end
 
     def handle_emits_error(tag, es, error)
-      error_info = {error_class: error.class, error: error.to_s, tag: tag}
+      error_info = { error_class: error.class, error: error.to_s, tag: tag }
       if @error_collector
-        log.warn "send an error event stream to @ERROR:", error_info
+        log.warn 'send an error event stream to @ERROR:', error_info
         @error_collector.emit_stream(tag, es)
       else
         now = Engine.now
         if @suppress_emit_error_log_interval.zero? || now > @next_emit_error_log_time
-          log.warn "emit transaction failed:", error_info
+          log.warn 'emit transaction failed:', error_info
           log.warn_backtrace
           @next_emit_error_log_time = now + @suppress_emit_error_log_interval
         end
-        raise error
+        fail error
       end
     end
 
@@ -208,18 +207,18 @@ module Fluent
       end
 
       def emit_error_event(tag, time, record, error)
-        error_info = {error_class: error.class, error: error.to_s, tag: tag, time: time, record: record}
-        log.warn "dump an error event in @ERROR:", error_info
+        error_info = { error_class: error.class, error: error.to_s, tag: tag, time: time, record: record }
+        log.warn 'dump an error event in @ERROR:', error_info
       end
 
-      def handle_emits_error(tag, es, e)
+      def handle_emits_error(tag, _es, e)
         now = Engine.now
         if @suppress_emit_error_log_interval.zero? || now > @next_emit_error_log_time
-          log.warn "emit transaction failed in @ERROR:", error_class: e.class, error: e, tag: tag
+          log.warn 'emit transaction failed in @ERROR:', error_class: e.class, error: e, tag: tag
           log.warn_backtrace
           @next_emit_error_log_time = now + @suppress_emit_error_log_interval
         end
-        raise e
+        fail e
       end
     end
   end

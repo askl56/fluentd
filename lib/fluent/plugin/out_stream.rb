@@ -63,20 +63,20 @@ module Fluent
 
       def write(chunk)
         chain = NullOutputChain.instance
-        chunk.open {|io|
-          # TODO use MessagePackIoEventStream
+        chunk.open do|io|
+          # TODO: use MessagePackIoEventStream
           u = MessagePack::Unpacker.new(io)
           begin
-            u.each {|(tag,entries)|
+            u.each do|(tag, entries)|
               es = MultiEventStream.new
-              entries.each {|o|
+              entries.each do|o|
                 es.add(o[0], o[1])
-              }
+              end
               @secondary.emit(tag, es, chain)
-            }
+            end
           rescue EOFError
           end
-        }
+        end
       end
     end
   end

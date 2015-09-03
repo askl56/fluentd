@@ -27,29 +27,29 @@ module Fluent
 
     def emits
       all = []
-      @emit_streams.each {|tag,events|
-        events.each {|time,record|
+      @emit_streams.each do|tag, events|
+        events.each do|time, record|
           all << [tag, time, record]
-        }
-      }
+        end
+      end
       all
     end
 
     def events
       all = []
-      @emit_streams.each {|tag,events|
+      @emit_streams.each do|_tag, events|
         all.concat events
-      }
+      end
       all
     end
 
     def records
       all = []
-      @emit_streams.each {|tag,events|
-        events.each {|time,record|
+      @emit_streams.each do|_tag, events|
+        events.each do|_time, record|
           all << record
-        }
-      }
+        end
+      end
       all
     end
 

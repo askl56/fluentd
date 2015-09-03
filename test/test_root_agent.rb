@@ -12,15 +12,15 @@ class RootAgentTest < ::Test::Unit::TestCase
   end
 
   data(
-    'suppress interval' => [{suppress_interval: 30}, {:@suppress_emit_error_log_interval => 30}],
-    'without source' => [{without_source: true}, {:@without_source => true}]
-    )
+    'suppress interval' => [{ suppress_interval: 30 }, { :@suppress_emit_error_log_interval => 30 }],
+    'without source' => [{ without_source: true }, { :@without_source => true }]
+  )
   def test_initialize_with_opt(data)
     opt, expected = data
     ra = RootAgent.new(opt)
-    expected.each { |k, v|
+    expected.each do |k, v|
       assert_equal v, ra.instance_variable_get(k)
-    }
+    end
   end
 
   sub_test_case 'configure' do
@@ -30,7 +30,7 @@ class RootAgentTest < ::Test::Unit::TestCase
     end
 
     def configure_ra(conf_str)
-      conf = Config.parse(conf_str, "(test)", "(test_dir)", true)
+      conf = Config.parse(conf_str, '(test)', '(test_dir)', true)
       @ra.configure(conf)
       @ra
     end
@@ -41,9 +41,9 @@ class RootAgentTest < ::Test::Unit::TestCase
       assert_empty ra.labels
       assert_empty ra.outputs
       assert_empty ra.filters
-      [:@started_inputs, :@started_outputs, :@started_filters].each { |k|
+      [:@started_inputs, :@started_outputs, :@started_filters].each do |k|
         assert_empty ra.instance_variable_get(k)
-      }
+      end
       assert_nil ra.context
       assert_nil ra.error_collector
     end
@@ -80,15 +80,15 @@ EOC
       assert_kind_of FluentTestInput, ra.inputs.first
       assert_kind_of RelabelOutput, ra.outputs.first
       assert_kind_of FluentTestFilter, ra.filters.first
-      [:@started_inputs, :@started_outputs, :@started_filters].each { |k|
+      [:@started_inputs, :@started_outputs, :@started_filters].each do |k|
         assert_empty ra.instance_variable_get(k)
-      }
+      end
       assert ra.error_collector
 
-      %W(@test @ERROR).each { |label_symbol|
+      %w(@test @ERROR).each do |label_symbol|
         assert_include ra.labels, label_symbol
         assert_kind_of Label, ra.labels[label_symbol]
-      }
+      end
 
       test_label = ra.labels['@test']
       assert_kind_of FluentTestOutput, test_label.outputs.first
@@ -103,7 +103,7 @@ EOC
   sub_test_case 'start/shutdown' do
     setup do
       @ra = RootAgent.new
-      @ra.configure(Config.parse(<<-EOC, "(test)", "(test_dir)", true))
+      @ra.configure(Config.parse(<<-EOC, '(test)', '(test_dir)', true))
 <source>
   @type test_in
   @id test_in

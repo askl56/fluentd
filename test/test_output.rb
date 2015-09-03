@@ -26,9 +26,9 @@ module FluentOutputTest
       Fluent::Test.setup
     end
 
-    CONFIG = %[]
+    CONFIG = %()
 
-    def create_driver(conf=CONFIG)
+    def create_driver(conf = CONFIG)
       Fluent::Test::BufferedOutputTestDriver.new(Fluent::BufferedOutput) do
         def write(chunk)
           chunk.read
@@ -50,15 +50,15 @@ module FluentOutputTest
       assert_equal 1, d.instance.queued_chunk_flush_interval
 
       # max_retry_wait
-      d = create_driver(CONFIG + %[max_retry_wait 4])
+      d = create_driver(CONFIG + %(max_retry_wait 4))
       assert_equal 4, d.instance.max_retry_wait
 
       # disable_retry_limit
-      d = create_driver(CONFIG + %[disable_retry_limit true])
+      d = create_driver(CONFIG + %(disable_retry_limit true))
       assert_equal true, d.instance.disable_retry_limit
 
       # retry_wait is converted to Float for calc_retry_wait
-      d = create_driver(CONFIG + %[retry_wait 1s])
+      d = create_driver(CONFIG + %(retry_wait 1s))
       assert_equal Float, d.instance.retry_wait.class
     end
 
@@ -69,11 +69,11 @@ module FluentOutputTest
         # "d.instance.instance_variable_get(:@num_errors) += 1" causes SyntaxError
         d.instance.instance_eval { @num_errors += 1 }
       }
-      wait = d.instance.retry_wait * (2 ** (d.instance.retry_limit - 1))
-      assert( d.instance.calc_retry_wait > wait - wait / 8.0 )
+      wait = d.instance.retry_wait * (2**(d.instance.retry_limit - 1))
+      assert(d.instance.calc_retry_wait > wait - wait / 8.0)
 
       # max_retry_wait
-      d = create_driver(CONFIG + %[max_retry_wait 4])
+      d = create_driver(CONFIG + %(max_retry_wait 4))
       d.instance.retry_limit.times {
         d.instance.instance_eval { @num_errors += 1 }
       }
@@ -81,7 +81,7 @@ module FluentOutputTest
     end
 
     def test_calc_retry_wait_with_integer_retry_wait
-      d = create_driver(CONFIG + %[retry_wait 2s])
+      d = create_driver(CONFIG + %(retry_wait 2s))
       d.instance.retry_limit.times {
         d.instance.instance_eval { @num_errors += 1 }
       }
@@ -92,10 +92,10 @@ module FluentOutputTest
       # Test that everything works properly after a very large number of
       # retries and we hit the expected max_retry_wait.
       exp_max_retry_wait = 300
-      d = create_driver(CONFIG + %[
+      d = create_driver(CONFIG + %(
         disable_retry_limit true
         max_retry_wait #{exp_max_retry_wait}
-      ])
+      ))
       d.instance.instance_eval { @num_errors += 1000 }
       assert_equal exp_max_retry_wait, d.instance.calc_retry_wait
       d.instance.instance_eval { @num_errors += 1000 }
@@ -104,7 +104,7 @@ module FluentOutputTest
       assert_equal exp_max_retry_wait, d.instance.calc_retry_wait
     end
 
-    def create_mock_driver(conf=CONFIG)
+    def create_mock_driver(conf = CONFIG)
       Fluent::Test::BufferedOutputTestDriver.new(Fluent::BufferedOutput) do
         attr_accessor :submit_flush_threads
 
@@ -114,7 +114,7 @@ module FluentOutputTest
           # ensure OutputThread to start successfully
           submit_flush
           sleep 0.5
-          while !@started
+          until @started
             submit_flush
             sleep 0.5
           end
@@ -150,7 +150,7 @@ module FluentOutputTest
       assert_equal 1, d.instance.submit_flush_threads.size
 
       # num_threads 4
-      d = create_mock_driver(CONFIG + %[num_threads 4])
+      d = create_mock_driver(CONFIG + %(num_threads 4))
       d.instance.start
       assert_equal 0, d.instance.instance_variable_get('@writer_current_position')
       d.instance.submit_flush
@@ -162,22 +162,22 @@ module FluentOutputTest
       d.instance.submit_flush
       assert_equal 0, d.instance.instance_variable_get('@writer_current_position')
       d.instance.shutdown
-      assert (d.instance.submit_flush_threads.size > 1), "fails if only one thread works to submit flush"
+      assert (d.instance.submit_flush_threads.size > 1), 'fails if only one thread works to submit flush'
     end
 
     def test_secondary
-      d = create_driver(CONFIG + %[
+      d = create_driver(CONFIG + %(
         <secondary>
           type test
           name c0
         </secondary>
-      ])
+      ))
       assert_not_nil d.instance.instance_variable_get(:@secondary).router
     end
 
-    sub_test_case "test_force_flush" do
+    sub_test_case 'test_force_flush' do
       setup do
-        time = Time.parse("2011-01-02 13:14:15 UTC")
+        time = Time.parse('2011-01-02 13:14:15 UTC')
         Timecop.freeze(time)
         @time = time.to_i
       end
@@ -186,7 +186,7 @@ module FluentOutputTest
         Timecop.return
       end
 
-      test "force_flush works on retrying" do
+      test 'force_flush works on retrying' do
         d = create_driver(CONFIG)
         d.instance.start
         buffer = d.instance.instance_variable_get(:@buffer)
@@ -196,7 +196,7 @@ module FluentOutputTest
         # buffer should be popped (flushed) immediately
         flexmock(buffer).should_receive(:pop).once
         # force_flush
-        buffer.emit("test", 'test', NullOutputChain.instance)
+        buffer.emit('test', 'test', NullOutputChain.instance)
         d.instance.force_flush
         10.times { sleep 0.05 }
       end
@@ -213,30 +213,30 @@ module FluentOutputTest
       FileUtils.mkdir_p(TMP_DIR)
     end
 
-    TMP_DIR = File.expand_path(File.dirname(__FILE__) + "/tmp/time_sliced_output")
+    TMP_DIR = File.expand_path(File.dirname(__FILE__) + '/tmp/time_sliced_output')
 
-    CONFIG = %[]
+    CONFIG = %()
 
-    def create_driver(conf=CONFIG)
+    def create_driver(conf = CONFIG)
       Fluent::Test::TimeSlicedOutputTestDriver.new(Fluent::TimeSlicedOutput).configure(conf, true)
     end
 
-    sub_test_case "test_force_flush" do
+    sub_test_case 'test_force_flush' do
       setup do
-        time = Time.parse("2011-01-02 13:14:15 UTC")
+        time = Time.parse('2011-01-02 13:14:15 UTC')
         Timecop.freeze(time)
-        @es = OneEventStream.new(time.to_i, {"message" => "foo"})
+        @es = OneEventStream.new(time.to_i, { 'message' => 'foo' })
       end
 
       teardown do
         Timecop.return
       end
 
-      test "force_flush immediately flushes" do
-        d = create_driver(CONFIG + %[
+      test 'force_flush immediately flushes' do
+        d = create_driver(CONFIG + %(
           time_format %Y%m%d%H%M%S
           buffer_path #{TMP_DIR}/foo
-        ])
+        ))
         d.instance.start
         # buffer should be popped (flushed) immediately
         flexmock(d.instance.instance_variable_get(:@buffer)).should_receive(:pop).once

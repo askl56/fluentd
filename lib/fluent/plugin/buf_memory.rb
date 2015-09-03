@@ -16,11 +16,11 @@
 
 module Fluent
   class MemoryBufferChunk < BufferChunk
-    def initialize(key, data='')
+    def initialize(key, data = '')
       @data = data
       @data.force_encoding('ASCII-8BIT')
       now = Time.now.utc
-      u1 = ((now.to_i*1000*1000+now.usec) << 12 | rand(0xfff))
+      u1 = ((now.to_i * 1000 * 1000 + now.usec) << 12 | rand(0xfff))
       @unique_id = [u1 >> 32, u1 & 0xffffffff, rand(0xffffffff), rand(0xffffffff)].pack('NNNN')
       super(key)
     end
@@ -62,7 +62,6 @@ module Fluent
     end
   end
 
-
   class MemoryBuffer < BasicBuffer
     Plugin.register_buffer('memory', self)
 
@@ -79,7 +78,7 @@ module Fluent
       super
 
       unless @flush_at_shutdown
-        $log.warn "When flush_at_shutdown is false, buf_memory discards buffered chunks at shutdown."
+        $log.warn 'When flush_at_shutdown is false, buf_memory discards buffered chunks at shutdown.'
         $log.warn "Please confirm 'flush_at_shutdown false' configuration is correct or not."
       end
     end
@@ -87,9 +86,9 @@ module Fluent
     def before_shutdown(out)
       if @flush_at_shutdown
         synchronize do
-          @map.each_key {|key|
+          @map.each_key do|key|
             push(key)
-          }
+          end
           while pop(out)
           end
         end
@@ -101,10 +100,10 @@ module Fluent
     end
 
     def resume
-      return [], {}
+      [[], {}]
     end
 
-    def enqueue(chunk)
+    def enqueue(_chunk)
     end
   end
 end

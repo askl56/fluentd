@@ -36,8 +36,8 @@ module Fluent
       def on_timer
         @callback.call
       rescue
-        # TODO log?
-        @log.error $!.to_s
+        # TODO: log?
+        @log.error $ERROR_INFO.to_s
         @log.error_backtrace
       end
     end
@@ -54,7 +54,7 @@ module Fluent
     end
 
     def shutdown
-      @loop.watchers.each {|w| w.detach }
+      @loop.watchers.each(&:detach)
       @loop.stop
       @thread.join
     end
@@ -62,7 +62,7 @@ module Fluent
     def run
       @loop.run
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
@@ -89,7 +89,7 @@ module Fluent
       array = []
       map = {}
 
-      ObjectSpace.each_object {|obj|
+      ObjectSpace.each_object do|obj|
         klass = obj.class rescue Object
         if c = map[klass]
           c.incr!
@@ -98,19 +98,19 @@ module Fluent
           array << c
           map[klass] = c
         end
-      }
+      end
 
-      array.sort_by! {|c| -c.count }
+      array.sort_by! { |c| -c.count }
 
       record = {}
-      array.each_with_index {|c,i|
+      array.each_with_index do|c, i|
         break if i >= @top
         record[c.name] = c.count
-      }
+      end
 
       router.emit(@tag, now, record)
     rescue => e
-      log.error "object space failed to emit", error: e.to_s, error_class: e.class.to_s, tag: @tag, record: Yajl.dump(record)
+      log.error 'object space failed to emit', error: e.to_s, error_class: e.class.to_s, tag: @tag, record: Yajl.dump(record)
     end
   end
 end

@@ -74,16 +74,14 @@ module Fluent
     end
 
     def load_plugins
-      dir = File.join(File.dirname(__FILE__), "plugin")
+      dir = File.join(File.dirname(__FILE__), 'plugin')
       load_plugin_dir(dir)
     end
 
     def load_plugin_dir(dir)
       dir = File.expand_path(dir)
       Dir.entries(dir).sort.each {|fname|
-        if fname =~ /\.rb$/
-          require File.join(dir, fname)
-        end
+        require File.join(dir, fname) if fname =~ /\.rb$/
       }
       nil
     end
@@ -113,6 +111,7 @@ module Fluent
     end
 
     private
+
     def register_impl(name, map, type, klass)
       map[type] = klass
       $log.trace { "registered #{name} plugin '#{type}'" }
@@ -127,7 +126,7 @@ module Fluent
       if klass = map[type]
         return klass.new
       end
-      raise ConfigError, "Unknown #{name} plugin '#{type}'. Run 'gem search -rd fluent-plugin' to find plugins"
+      fail ConfigError, "Unknown #{name} plugin '#{type}'. Run 'gem search -rd fluent-plugin' to find plugins"
     end
 
     def try_load_plugin(name, type)
@@ -161,7 +160,7 @@ module Fluent
       }
 
       # prefer newer version
-      specs = specs.sort_by { |spec| spec.version }
+      specs = specs.sort_by(&:version)
       if spec = specs.last
         spec.require_paths.each { |lib|
           file = "#{spec.full_gem_path}/#{lib}/#{path}"

@@ -34,22 +34,22 @@ module FluentTest
       @started = false
     end
 
-    def emit(tag, es, chain)
-      es.each { |time, record|
+    def emit(tag, es, _chain)
+      es.each do |_time, record|
         @events[tag] << record
-      }
+      end
     end
   end
 
   class FluentTestErrorOutput < ::Fluent::BufferedOutput
     ::Fluent::Plugin.register_output('test_out_error', self)
 
-    def format(tag, time, record)
-      raise "emit error!"
+    def format(_tag, _time, _record)
+      fail 'emit error!'
     end
 
-    def write(chunk)
-      raise "chunk error!"
+    def write(_chunk)
+      fail 'chunk error!'
     end
   end
 
@@ -73,7 +73,7 @@ module FluentTest
       @started = false
     end
 
-    def filter(tag, time, record)
+    def filter(_tag, _time, record)
       record[@field] = @num
       @num += 1
       record
@@ -87,12 +87,12 @@ module FluentTest
 
     attr_reader :events
 
-    def handle_emit_error(tag, time, record, error)
+    def handle_emit_error(tag, _time, record, _error)
       @events[tag] << record
     end
 
     def handle_emits_error(tag, es, error)
-      es.each { |time,record| handle_emit_error(tag, time, record, error) }
+      es.each { |time, record| handle_emit_error(tag, time, record, error) }
     end
   end
 end

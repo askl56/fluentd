@@ -19,7 +19,7 @@ require 'tzinfo'
 module Fluent
   class Timezone
     # [+-]HH:MM, [+-]HHMM, [+-]HH
-    NUMERIC_PATTERN = %r{\A[+-]\d\d(:?\d\d)?\z}
+    NUMERIC_PATTERN = /\A[+-]\d\d(:?\d\d)?\z/
 
     # Region/Zone, Region/Zone/Zone
     NAME_PATTERN = %r{\A[^/]+/[^/]+(/[^/]+)?\z}
@@ -78,7 +78,7 @@ module Fluent
     # method raises a ConfigError.
     def self.validate!(timezone)
       unless validate(timezone)
-        raise ConfigError, "Unsupported timezone '#{timezone}'"
+        fail ConfigError, "Unsupported timezone '#{timezone}'"
       end
     end
 
@@ -87,22 +87,20 @@ module Fluent
     # An Proc object is returned. If the given timezone is invalid,
     # nil is returned.
     def self.formatter(timezone, format = nil)
-      if timezone.nil?
-        return nil
-      end
+      return nil if timezone.nil?
 
       # [+-]HH:MM, [+-]HHMM, [+-]HH
       if NUMERIC_PATTERN === timezone
         offset = Time.zone_offset(timezone)
 
         if format
-          return Proc.new {|time|
+          return proc do|time|
             Time.at(time).localtime(offset).strftime(format)
-          }
+          end
         else
-          return Proc.new {|time|
+          return proc do|time|
             Time.at(time).localtime(offset).iso8601
-          }
+          end
         end
       end
 
@@ -115,17 +113,17 @@ module Fluent
         end
 
         if format
-          return Proc.new {|time|
+          return proc do|time|
             Time.at(time).localtime(tz.period_for_utc(time).utc_total_offset).strftime(format)
-          }
+          end
         else
-          return Proc.new {|time|
+          return proc do|time|
             Time.at(time).localtime(tz.period_for_utc(time).utc_total_offset).iso8601
-          }
+          end
         end
       end
 
-      return nil
+      nil
     end
   end
 end

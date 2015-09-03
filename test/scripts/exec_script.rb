@@ -6,11 +6,11 @@ def gen_tsv(time)
 end
 
 def gen_json(time)
-  {'tag' => 'tag1', 'time' => time, 'k1' => 'ok'}.to_json
+  { 'tag' => 'tag1', 'time' => time, 'k1' => 'ok' }.to_json
 end
 
 def gen_msgpack(time)
-  {'tagger' => 'tag1', 'datetime' => time, 'k1' => 'ok'}.to_msgpack
+  { 'tagger' => 'tag1', 'datetime' => time, 'k1' => 'ok' }.to_msgpack
 end
 
 time = ARGV.first

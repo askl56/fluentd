@@ -6,8 +6,8 @@ class StdoutOutputTest < Test::Unit::TestCase
     Fluent::Test.setup
   end
 
-  CONFIG = %[
-  ]
+  CONFIG = %(
+  )
 
   def create_driver(conf = CONFIG)
     Fluent::Test::OutputTestDriver.new(Fluent::StdoutOutput).configure(conf)
@@ -33,28 +33,28 @@ class StdoutOutputTest < Test::Unit::TestCase
   def test_emit_json
     d = create_driver(CONFIG + "\noutput_type json")
     time = Time.now
-    out = capture_log { d.emit({'test' => 'test'}, time) }
+    out = capture_log { d.emit({ 'test' => 'test' }, time) }
     assert_equal "#{time.localtime} test: {\"test\":\"test\"}\n", out
 
     # NOTE: Float::NAN is not jsonable
-    assert_raise(Yajl::EncodeError) { d.emit({'test' => Float::NAN}, time) }
+    assert_raise(Yajl::EncodeError) { d.emit({ 'test' => Float::NAN }, time) }
   end
 
   def test_emit_hash
     d = create_driver(CONFIG + "\noutput_type hash")
     time = Time.now
-    out = capture_log { d.emit({'test' => 'test'}, time) }
+    out = capture_log { d.emit({ 'test' => 'test' }, time) }
     assert_equal "#{time.localtime} test: {\"test\"=>\"test\"}\n", out
 
     # NOTE: Float::NAN is not jsonable, but hash string can output it.
-    out = capture_log { d.emit({'test' => Float::NAN}, time) }
+    out = capture_log { d.emit({ 'test' => Float::NAN }, time) }
     assert_equal "#{time.localtime} test: {\"test\"=>NaN}\n", out
   end
 
   private
 
   # Capture the log output of the block given
-  def capture_log(&block)
+  def capture_log(&_block)
     tmp = $log
     $log = StringIO.new
     yield
@@ -63,4 +63,3 @@ class StdoutOutputTest < Test::Unit::TestCase
     $log = tmp
   end
 end
-

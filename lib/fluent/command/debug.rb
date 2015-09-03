@@ -19,22 +19,22 @@ require 'optparse'
 op = OptionParser.new
 
 host = '127.0.0.1'
-port = 24230
+port = 24_230
 unix = nil
 
-op.on('-h', '--host HOST', "fluent host (default: #{host})") {|s|
+op.on('-h', '--host HOST', "fluent host (default: #{host})") do|s|
   host = s
-}
+end
 
-op.on('-p', '--port PORT', "debug_agent tcp port (default: #{port})", Integer) {|i|
+op.on('-p', '--port PORT', "debug_agent tcp port (default: #{port})", Integer) do|i|
   port = i
-}
+end
 
-op.on('-u', '--unix PATH', "use unix socket instead of tcp") {|b|
+op.on('-u', '--unix PATH', 'use unix socket instead of tcp') do|b|
   unix = b
-}
+end
 
-(class<<self;self;end).module_eval do
+(class<<self; self; end).module_eval do
   define_method(:usage) do |msg|
     puts op.to_s
     puts "error: #{msg}" if msg
@@ -45,11 +45,9 @@ end
 begin
   op.parse!(ARGV)
 
-  if ARGV.length != 0
-    usage nil
-  end
+  usage nil if ARGV.length != 0
 rescue
-  usage $!.to_s
+  usage $ERROR_INFO.to_s
 end
 
 require 'drb/drb'
@@ -82,14 +80,13 @@ end
 include Fluent
 
 puts "Connected to #{uri}."
-puts "Usage:"
+puts 'Usage:'
 puts "    Engine.match('some.tag').output  : get an output plugin instance"
-puts "    Engine.sources[i]                : get input plugin instances"
-puts "    Plugin.load_plugin(type,name)    : load plugin class (use this if you get DRb::DRbUnknown)"
-puts ""
+puts '    Engine.sources[i]                : get input plugin instances'
+puts '    Plugin.load_plugin(type,name)    : load plugin class (use this if you get DRb::DRbUnknown)'
+puts ''
 
 Encoding.default_internal = nil if Encoding.respond_to?(:default_internal)
 
 require 'irb'
 IRB.start
-

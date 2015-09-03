@@ -28,16 +28,15 @@ module Fluent
       attr_reader :called
     end
 
-
     class OutputTestDriver < InputTestDriver
-      def initialize(klass, tag='test', &block)
+      def initialize(klass, tag = 'test', &block)
         super(klass, &block)
         @tag = tag
       end
 
       attr_accessor :tag
 
-      def emit(record, time=Time.now)
+      def emit(record, time = Time.now)
         es = OneEventStream.new(time.to_i, record)
         chain = TestOutputChain.new
         @instance.emit(@tag, es, chain)
@@ -45,9 +44,8 @@ module Fluent
       end
     end
 
-
     class BufferedOutputTestDriver < InputTestDriver
-      def initialize(klass, tag='test', &block)
+      def initialize(klass, tag = 'test', &block)
         super(klass, &block)
         @entries = []
         @expected_buffer = nil
@@ -60,7 +58,7 @@ module Fluent
 
       attr_accessor :tag
 
-      def emit(record, time=Time.now)
+      def emit(record, time = Time.now)
         @entries << [time.to_i, record]
         self
       end
@@ -71,15 +69,13 @@ module Fluent
 
       def run(&block)
         result = nil
-        super {
+        super do
           es = ArrayEventStream.new(@entries)
           buffer = @instance.format_stream(@tag, es)
 
           block.call if block
 
-          if @expected_buffer
-            assert_equal(@expected_buffer, buffer)
-          end
+          assert_equal(@expected_buffer, buffer) if @expected_buffer
 
           key = ''
           if @instance.respond_to?(:time_slicer)
@@ -94,13 +90,13 @@ module Fluent
           ensure
             chunk.purge
           end
-        }
+        end
         result
       end
     end
 
     class TimeSlicedOutputTestDriver < InputTestDriver
-      def initialize(klass, tag='test', &block)
+      def initialize(klass, tag = 'test', &block)
         super(klass, &block)
         @entries = {}
         @expected_buffer = nil
@@ -109,10 +105,10 @@ module Fluent
 
       attr_accessor :tag
 
-      def emit(record, time=Time.now)
-        slicer = @instance.instance_eval{@time_slicer}
+      def emit(record, time = Time.now)
+        slicer = @instance.instance_eval { @time_slicer }
         key = slicer.call(time.to_i)
-        @entries[key] = [] unless @entries.has_key?(key)
+        @entries[key] = [] unless @entries.key?(key)
         @entries[key] << [time.to_i, record]
         self
       end
@@ -123,33 +119,31 @@ module Fluent
 
       def run(&block)
         result = []
-        super {
+        super do
           buffer = ''
-          @entries.keys.each {|key|
+          @entries.keys.each do|key|
             es = ArrayEventStream.new(@entries[key])
             @instance.emit(@tag, es, NullOutputChain.instance)
             buffer << @instance.format_stream(@tag, es)
-          }
+          end
 
           block.call if block
 
-          if @expected_buffer
-            assert_equal(@expected_buffer, buffer)
-          end
+          assert_equal(@expected_buffer, buffer) if @expected_buffer
 
-          chunks = @instance.instance_eval {
-            @buffer.instance_eval {
+          chunks = @instance.instance_eval do
+            @buffer.instance_eval do
               chunks = []
-              @map.keys.each {|key|
+              @map.keys.each do|key|
                 chunks.push(@map.delete(key))
-              }
+              end
               chunks
-            }
-          }
-          chunks.each { |chunk|
+            end
+          end
+          chunks.each do |chunk|
             result.push(@instance.write(chunk))
-          }
-        }
+          end
+        end
         result
       end
     end

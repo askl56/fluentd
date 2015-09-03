@@ -13,18 +13,18 @@ module FluentFileBufferTest
     BUF_FILE_TMPDIR = File.expand_path(File.join(File.dirname(__FILE__), '..', 'tmp', 'buf_file_chunk'))
 
     def setup
-      if Dir.exists? BUF_FILE_TMPDIR
+      if Dir.exist? BUF_FILE_TMPDIR
         FileUtils.remove_entry_secure BUF_FILE_TMPDIR
       end
       FileUtils.mkdir_p BUF_FILE_TMPDIR
     end
 
-    def bufpath(unique, link=false)
+    def bufpath(unique, link = false)
       File.join(BUF_FILE_TMPDIR, unique + '.log' + (link ? '.link' : ''))
     end
 
-    def filebufferchunk(key, unique, opts={})
-      Fluent::FileBufferChunk.new(key, bufpath(unique), unique, opts[:mode] || "a+", opts[:symlink])
+    def filebufferchunk(key, unique, opts = {})
+      Fluent::FileBufferChunk.new(key, bufpath(unique), unique, opts[:mode] || 'a+', opts[:symlink])
     end
 
     def test_init
@@ -40,7 +40,7 @@ module FluentFileBufferTest
       chunk = filebufferchunk('key2', 'init2', symlink: symlink_path)
       assert_equal 'key2', chunk.key
       assert_equal 'init2', chunk.unique_id
-      assert File.exists?(symlink_path) && File.symlink?(symlink_path)
+      assert File.exist?(symlink_path) && File.symlink?(symlink_path)
 
       chunk.close # unlink
 
@@ -81,14 +81,14 @@ module FluentFileBufferTest
       chunk = filebufferchunk('a1', 'append1')
       assert chunk.empty?
 
-      test_data1 = ("1" * 9 + "\n" + "2" * 9 + "\n").force_encoding('ASCII-8BIT')
+      test_data1 = ('1' * 9 + "\n" + '2' * 9 + "\n").force_encoding('ASCII-8BIT')
       test_data2 = "日本語Japanese\n".force_encoding('UTF-8')
       chunk << test_data1
       chunk << test_data2
       assert_equal 38, chunk.size
       chunk.close
 
-      assert File.exists?(bufpath('append1'))
+      assert File.exist?(bufpath('append1'))
 
       chunk = filebufferchunk('a1', 'append1', mode: 'r')
       test_data = test_data1.force_encoding('ASCII-8BIT') + test_data2.force_encoding('ASCII-8BIT')
@@ -101,14 +101,14 @@ module FluentFileBufferTest
 
       chunk.purge
 
-      assert !(File.exists?(bufpath('append1')))
+      assert !(File.exist?(bufpath('append1')))
     end
 
     def test_empty_chunk_key # for BufferedOutput#emit
       chunk = filebufferchunk('', 'append1')
       assert chunk.empty?
 
-      test_data1 = ("1" * 9 + "\n" + "2" * 9 + "\n").force_encoding('ASCII-8BIT')
+      test_data1 = ('1' * 9 + "\n" + '2' * 9 + "\n").force_encoding('ASCII-8BIT')
       test_data2 = "日本語Japanese\n".force_encoding('UTF-8')
       chunk << test_data1
       chunk << test_data2
@@ -120,9 +120,9 @@ module FluentFileBufferTest
       chunk = filebufferchunk('r1', 'read1')
       assert chunk.empty?
 
-      d1 = "abcde" * 200 + "\n"
+      d1 = 'abcde' * 200 + "\n"
       chunk << d1
-      d2 = "12345" * 200 + "\n"
+      d2 = '12345' * 200 + "\n"
       chunk << d2
       assert_equal (d1.size + d2.size), chunk.size
 
@@ -136,15 +136,13 @@ module FluentFileBufferTest
       chunk = filebufferchunk('o1', 'open1')
       assert chunk.empty?
 
-      d1 = "abcde" * 200 + "\n"
+      d1 = 'abcde' * 200 + "\n"
       chunk << d1
-      d2 = "12345" * 200 + "\n"
+      d2 = '12345' * 200 + "\n"
       chunk << d2
       assert_equal (d1.size + d2.size), chunk.size
 
-      read_data = chunk.open do |io|
-        io.read
-      end
+      read_data = chunk.open(&:read)
       assert_equal (d1 + d2), read_data
 
       chunk.purge
@@ -154,9 +152,9 @@ module FluentFileBufferTest
       chunk = filebufferchunk('w1', 'write1')
       assert chunk.empty?
 
-      d1 = "abcde" * 200 + "\n"
+      d1 = 'abcde' * 200 + "\n"
       chunk << d1
-      d2 = "12345" * 200 + "\n"
+      d2 = '12345' * 200 + "\n"
       chunk << d2
       assert_equal (d1.size + d2.size), chunk.size
 
@@ -172,9 +170,9 @@ module FluentFileBufferTest
       chunk = filebufferchunk('m1', 'msgpack1')
       assert chunk.empty?
 
-      d0 = MessagePack.pack([[1, "foo"], [2, "bar"], [3, "baz"]])
-      d1 = MessagePack.pack({"key1" => "value1", "key2" => "value2"})
-      d2 = MessagePack.pack("string1")
+      d0 = MessagePack.pack([[1, 'foo'], [2, 'bar'], [3, 'baz']])
+      d1 = MessagePack.pack({ 'key1' => 'value1', 'key2' => 'value2' })
+      d2 = MessagePack.pack('string1')
       d3 = MessagePack.pack(1)
       d4 = MessagePack.pack(nil)
       chunk << d0
@@ -189,9 +187,9 @@ module FluentFileBufferTest
       end
 
       assert_equal 5, store.size
-      assert_equal [[1, "foo"], [2, "bar"], [3, "baz"]], store[0]
-      assert_equal({"key1" => "value1", "key2" => "value2"}, store[1])
-      assert_equal "string1", store[2]
+      assert_equal [[1, 'foo'], [2, 'bar'], [3, 'baz']], store[0]
+      assert_equal({ 'key1' => 'value1', 'key2' => 'value2' }, store[1])
+      assert_equal 'string1', store[2]
       assert_equal 1, store[3]
       assert_equal nil, store[4]
 
@@ -202,21 +200,21 @@ module FluentFileBufferTest
       chunk = filebufferchunk('m1', 'move1')
       assert chunk.empty?
 
-      d1 = "abcde" * 200 + "\n"
+      d1 = 'abcde' * 200 + "\n"
       chunk << d1
-      d2 = "12345" * 200 + "\n"
+      d2 = '12345' * 200 + "\n"
       chunk << d2
       assert_equal (d1.size + d2.size), chunk.size
 
       assert_equal bufpath('move1'), chunk.path
 
-      assert File.exists?( bufpath( 'move1' ) )
-      assert !(File.exists?( bufpath( 'move2' ) ))
+      assert File.exist?(bufpath('move1'))
+      assert !(File.exist?(bufpath('move2')))
 
       chunk.mv(bufpath('move2'))
 
-      assert !(File.exists?( bufpath( 'move1' ) ))
-      assert File.exists?( bufpath( 'move2' ) )
+      assert !(File.exist?(bufpath('move1')))
+      assert File.exist?(bufpath('move2'))
 
       assert_equal bufpath('move2'), chunk.path
 
@@ -228,7 +226,7 @@ module FluentFileBufferTest
     BUF_FILE_TMPDIR = File.expand_path(File.join(File.dirname(__FILE__), '..', 'tmp', 'buf_file'))
 
     def setup
-      if Dir.exists? BUF_FILE_TMPDIR
+      if Dir.exist? BUF_FILE_TMPDIR
         FileUtils.remove_entry_secure BUF_FILE_TMPDIR
       end
       FileUtils.mkdir_p BUF_FILE_TMPDIR
@@ -238,28 +236,28 @@ module FluentFileBufferTest
       File.join(BUF_FILE_TMPDIR, basename)
     end
 
-    def filebuffer(key, unique, opts={})
-      Fluent::FileBufferChunk.new(key, bufpath(unique), unique, opts[:mode] || "a+", opts[:symlink])
+    def filebuffer(key, unique, opts = {})
+      Fluent::FileBufferChunk.new(key, bufpath(unique), unique, opts[:mode] || 'a+', opts[:symlink])
     end
 
     def test_init_configure
       buf = Fluent::FileBuffer.new
 
-      assert_raise(Fluent::ConfigError){ buf.configure({}) }
+      assert_raise(Fluent::ConfigError) { buf.configure({}) }
 
-      buf.configure({'buffer_path' => bufpath('configure1.*.log')})
+      buf.configure({ 'buffer_path' => bufpath('configure1.*.log') })
       assert_equal bufpath('configure1.*.log'), buf.buffer_path
       assert_equal nil, buf.symlink_path
-      assert_equal false, buf.instance_eval{ @flush_at_shutdown }
+      assert_equal false, buf.instance_eval { @flush_at_shutdown }
 
       buf2 = Fluent::FileBuffer.new
 
       # Same buffer_path value is rejected, not to overwrite exisitng buffer file.
-      assert_raise(Fluent::ConfigError){ buf2.configure({'buffer_path' => bufpath('configure1.*.log')}) }
+      assert_raise(Fluent::ConfigError) { buf2.configure({ 'buffer_path' => bufpath('configure1.*.log') }) }
 
-      buf2.configure({'buffer_path' => bufpath('configure2.*.log'), 'flush_at_shutdown' => ''})
+      buf2.configure({ 'buffer_path' => bufpath('configure2.*.log'), 'flush_at_shutdown' => '' })
       assert_equal bufpath('configure2.*.log'), buf2.buffer_path
-      assert_equal true, buf2.instance_eval{ @flush_at_shutdown }
+      assert_equal true, buf2.instance_eval { @flush_at_shutdown }
     end
 
     def test_configure_path_prefix_suffix
@@ -268,15 +266,15 @@ module FluentFileBufferTest
 
       path1 = bufpath('suffpref1.*.log')
       prefix1, suffix1 = path1.split('*', 2)
-      buf.configure({'buffer_path' => path1})
-      assert_equal prefix1, buf.instance_eval{ @buffer_path_prefix }
-      assert_equal suffix1, buf.instance_eval{ @buffer_path_suffix }
+      buf.configure({ 'buffer_path' => path1 })
+      assert_equal prefix1, buf.instance_eval { @buffer_path_prefix }
+      assert_equal suffix1, buf.instance_eval { @buffer_path_suffix }
 
       # Without '*', prefix is the string of whole path + '.', suffix is '.log'
       path2 = bufpath('suffpref2')
-      buf.configure({'buffer_path' => path2})
-      assert_equal path2 + '.', buf.instance_eval{ @buffer_path_prefix }
-      assert_equal '.log', buf.instance_eval{ @buffer_path_suffix }
+      buf.configure({ 'buffer_path' => path2 })
+      assert_equal path2 + '.', buf.instance_eval { @buffer_path_prefix }
+      assert_equal '.log', buf.instance_eval { @buffer_path_suffix }
     end
 
     class DummyOutput
@@ -285,7 +283,7 @@ module FluentFileBufferTest
       def write(chunk)
         @written ||= []
         @written.push chunk
-        "return value"
+        'return value'
       end
     end
 
@@ -310,15 +308,15 @@ module FluentFileBufferTest
 
     def test_make_path
       buf = Fluent::FileBuffer.new
-      buf.configure({'buffer_path' => bufpath('makepath.*.log')})
-      prefix = buf.instance_eval{ @buffer_path_prefix }
-      suffix = buf.instance_eval{ @buffer_path_suffix }
+      buf.configure({ 'buffer_path' => bufpath('makepath.*.log') })
+      prefix = buf.instance_eval { @buffer_path_prefix }
+      suffix = buf.instance_eval { @buffer_path_suffix }
 
-      path,tsuffix = buf.send(:make_path, buf.send(:encode_key, 'foo bar'), 'b')
+      path, tsuffix = buf.send(:make_path, buf.send(:encode_key, 'foo bar'), 'b')
       assert path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.[bq][0-9a-f]+#{suffix}\Z/, "invalid format:#{path}"
       assert tsuffix =~ /\A[0-9a-f]+\Z/, "invalid hexadecimal:#{tsuffix}"
 
-      path,tsuffix = buf.send(:make_path, buf.send(:encode_key, 'baz 123'), 'q')
+      path, tsuffix = buf.send(:make_path, buf.send(:encode_key, 'baz 123'), 'q')
       assert path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.[bq][0-9a-f]+#{suffix}\Z/, "invalid format:#{path}"
       assert tsuffix =~ /\A[0-9a-f]+\Z/, "invalid hexadecimal:#{tsuffix}"
     end
@@ -332,39 +330,39 @@ module FluentFileBufferTest
 
     def test_start_makes_parent_directories
       buf = Fluent::FileBuffer.new
-      buf.configure({'buffer_path' => bufpath('start/base.*.log')})
-      parent_dirname = File.dirname(buf.instance_eval{ @buffer_path_prefix })
-      assert !(Dir.exists?(parent_dirname))
+      buf.configure({ 'buffer_path' => bufpath('start/base.*.log') })
+      parent_dirname = File.dirname(buf.instance_eval { @buffer_path_prefix })
+      assert !(Dir.exist?(parent_dirname))
       buf.start
-      assert Dir.exists?(parent_dirname)
+      assert Dir.exist?(parent_dirname)
     end
 
     def test_new_chunk
       buf = Fluent::FileBuffer.new
-      buf.configure({'buffer_path' => bufpath('new_chunk_1')})
-      prefix = buf.instance_eval{ @buffer_path_prefix }
-      suffix = buf.instance_eval{ @buffer_path_suffix }
+      buf.configure({ 'buffer_path' => bufpath('new_chunk_1') })
+      prefix = buf.instance_eval { @buffer_path_prefix }
+      suffix = buf.instance_eval { @buffer_path_suffix }
 
       chunk = buf.new_chunk('key1')
       assert chunk
-      assert File.exists?(chunk.path)
+      assert File.exist?(chunk.path)
       assert chunk.path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.b[0-9a-f]+#{suffix}\Z/, "path from new_chunk must be a 'b' buffer chunk"
       chunk.close
     end
 
     def test_chunk_identifier_in_path
       buf1 = Fluent::FileBuffer.new
-      buf1.configure({'buffer_path' => bufpath('chunkid1')})
-      prefix1 = buf1.instance_eval{ @buffer_path_prefix }
-      suffix1 = buf1.instance_eval{ @buffer_path_suffix }
+      buf1.configure({ 'buffer_path' => bufpath('chunkid1') })
+      prefix1 = buf1.instance_eval { @buffer_path_prefix }
+      suffix1 = buf1.instance_eval { @buffer_path_suffix }
 
       chunk1 = buf1.new_chunk('key1')
       assert_equal chunk1.path, prefix1 + buf1.chunk_identifier_in_path(chunk1.path) + suffix1
 
       buf2 = Fluent::FileBuffer.new
-      buf2.configure({'buffer_path' => bufpath('chunkid2')})
-      prefix2 = buf2.instance_eval{ @buffer_path_prefix }
-      suffix2 = buf2.instance_eval{ @buffer_path_suffix }
+      buf2.configure({ 'buffer_path' => bufpath('chunkid2') })
+      prefix2 = buf2.instance_eval { @buffer_path_prefix }
+      suffix2 = buf2.instance_eval { @buffer_path_suffix }
 
       chunk2 = buf2.new_chunk('key2')
       assert_equal chunk2.path, prefix2 + buf2.chunk_identifier_in_path(chunk2.path) + suffix2
@@ -372,23 +370,23 @@ module FluentFileBufferTest
 
     def test_enqueue_moves_chunk_from_b_to_q
       buf = Fluent::FileBuffer.new
-      buf.configure({'buffer_path' => bufpath('enqueue1')})
-      prefix = buf.instance_eval{ @buffer_path_prefix }
-      suffix = buf.instance_eval{ @buffer_path_suffix }
+      buf.configure({ 'buffer_path' => bufpath('enqueue1') })
+      prefix = buf.instance_eval { @buffer_path_prefix }
+      suffix = buf.instance_eval { @buffer_path_suffix }
 
       chunk = buf.new_chunk('key1')
       chunk << "data1\ndata2\n"
 
       assert chunk
       old_path = chunk.path.dup
-      assert File.exists?(chunk.path)
+      assert File.exist?(chunk.path)
       assert chunk.path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.b[0-9a-f]+#{suffix}\Z/, "path from new_chunk must be a 'b' buffer chunk"
 
       buf.enqueue(chunk)
 
       assert chunk
-      assert File.exists?(chunk.path)
-      assert !(File.exists?(old_path))
+      assert File.exist?(chunk.path)
+      assert !(File.exist?(old_path))
       assert chunk.path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.q[0-9a-f]+#{suffix}\Z/, "enqueued chunk's path must be a 'q' buffer chunk"
 
       data = chunk.read
@@ -400,24 +398,24 @@ module FluentFileBufferTest
     #  * TimeSlicedOutput's keys are time_key
     def test_enqueue_chunk_with_empty_key
       buf = Fluent::FileBuffer.new
-      buf.configure({'buffer_path' => bufpath('enqueue2')})
-      prefix = buf.instance_eval{ @buffer_path_prefix }
-      suffix = buf.instance_eval{ @buffer_path_suffix }
+      buf.configure({ 'buffer_path' => bufpath('enqueue2') })
+      prefix = buf.instance_eval { @buffer_path_prefix }
+      suffix = buf.instance_eval { @buffer_path_suffix }
 
       chunk = buf.new_chunk('')
       chunk << "data1\ndata2\n"
 
       assert chunk
       old_path = chunk.path.dup
-      assert File.exists?(chunk.path)
+      assert File.exist?(chunk.path)
       # chunk key is empty
       assert chunk.path =~ /\A#{prefix}\.b[0-9a-f]+#{suffix}\Z/, "path from new_chunk must be a 'b' buffer chunk"
 
       buf.enqueue(chunk)
 
       assert chunk
-      assert File.exists?(chunk.path)
-      assert !(File.exists?(old_path))
+      assert File.exist?(chunk.path)
+      assert !(File.exist?(old_path))
       # chunk key is empty
       assert chunk.path =~ /\A#{prefix}\.q[0-9a-f]+#{suffix}\Z/, "enqueued chunk's path must be a 'q' buffer chunk"
 
@@ -427,13 +425,13 @@ module FluentFileBufferTest
 
     def test_before_shutdown_without_flush_at_shutdown
       buf = Fluent::FileBuffer.new
-      buf.configure({'buffer_path' => bufpath('before_shutdown1')})
+      buf.configure({ 'buffer_path' => bufpath('before_shutdown1') })
       buf.start
 
       # before_shutdown does nothing
 
-      c1 = [ buf.new_chunk('k0'), buf.new_chunk('k1'), buf.new_chunk('k2'), buf.new_chunk('k3') ]
-      c2 = [ buf.new_chunk('q0'), buf.new_chunk('q1') ]
+      c1 = [buf.new_chunk('k0'), buf.new_chunk('k1'), buf.new_chunk('k2'), buf.new_chunk('k3')]
+      c2 = [buf.new_chunk('q0'), buf.new_chunk('q1')]
 
       buf.instance_eval do
         @map = {
@@ -453,30 +451,30 @@ module FluentFileBufferTest
 
       buf.instance_eval do
         @enqueue_hook_times = 0
-        def enqueue(chunk)
+        def enqueue(_chunk)
           @enqueue_hook_times += 1
         end
       end
-      assert_equal 0, buf.instance_eval{ @enqueue_hook_times }
+      assert_equal 0, buf.instance_eval { @enqueue_hook_times }
 
       out = DummyOutput.new
       assert_equal nil, out.written
 
       buf.before_shutdown(out)
 
-      assert_equal 0, buf.instance_eval{ @enqueue_hook_times } # k0, k1, k2
+      assert_equal 0, buf.instance_eval { @enqueue_hook_times } # k0, k1, k2
       assert_nil out.written
     end
 
     def test_before_shutdown_with_flush_at_shutdown
       buf = Fluent::FileBuffer.new
-      buf.configure({'buffer_path' => bufpath('before_shutdown2'), 'flush_at_shutdown' => 'true'})
+      buf.configure({ 'buffer_path' => bufpath('before_shutdown2'), 'flush_at_shutdown' => 'true' })
       buf.start
 
       # before_shutdown flushes all chunks in @map and @queue
 
-      c1 = [ buf.new_chunk('k0'), buf.new_chunk('k1'), buf.new_chunk('k2'), buf.new_chunk('k3') ]
-      c2 = [ buf.new_chunk('q0'), buf.new_chunk('q1') ]
+      c1 = [buf.new_chunk('k0'), buf.new_chunk('k1'), buf.new_chunk('k2'), buf.new_chunk('k3')]
+      c2 = [buf.new_chunk('q0'), buf.new_chunk('q1')]
 
       buf.instance_eval do
         @map = {
@@ -496,18 +494,18 @@ module FluentFileBufferTest
 
       buf.instance_eval do
         @enqueue_hook_times = 0
-        def enqueue(chunk)
+        def enqueue(_chunk)
           @enqueue_hook_times += 1
         end
       end
-      assert_equal 0, buf.instance_eval{ @enqueue_hook_times }
+      assert_equal 0, buf.instance_eval { @enqueue_hook_times }
 
       out = DummyOutput.new
       assert_equal nil, out.written
 
       buf.before_shutdown(out)
 
-      assert_equal 3, buf.instance_eval{ @enqueue_hook_times } # k0, k1, k2
+      assert_equal 3, buf.instance_eval { @enqueue_hook_times } # k0, k1, k2
       assert_equal 5, out.written.size
       assert_equal [c2[0], c2[1], c1[0], c1[1], c1[2]], out.written
     end
@@ -516,9 +514,9 @@ module FluentFileBufferTest
       buffer_path_for_resume_test = bufpath('resume')
 
       buf1 = Fluent::FileBuffer.new
-      buf1.configure({'buffer_path' => buffer_path_for_resume_test})
-      prefix = buf1.instance_eval{ @buffer_path_prefix }
-      suffix = buf1.instance_eval{ @buffer_path_suffix }
+      buf1.configure({ 'buffer_path' => buffer_path_for_resume_test })
+      prefix = buf1.instance_eval { @buffer_path_prefix }
+      suffix = buf1.instance_eval { @buffer_path_suffix }
 
       buf1.start
 
@@ -534,17 +532,17 @@ module FluentFileBufferTest
       buf1.enqueue(chunk1)
 
       assert chunk1
-      assert chunk1.path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.q[0-9a-f]+#{suffix}\Z/, "chunk1 must be enqueued"
+      assert chunk1.path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.q[0-9a-f]+#{suffix}\Z/, 'chunk1 must be enqueued'
       assert chunk2
-      assert chunk2.path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.b[0-9a-f]+#{suffix}\Z/, "chunk2 is not enqueued yet"
+      assert chunk2.path =~ /\A#{prefix}[-_.a-zA-Z0-9\%]+\.b[0-9a-f]+#{suffix}\Z/, 'chunk2 is not enqueued yet'
 
       buf1.shutdown
 
       buf2 = Fluent::FileBuffer.new
       Fluent::FileBuffer.send(:class_variable_set, :'@@buffer_paths', {})
-      buf2.configure({'buffer_path' => buffer_path_for_resume_test})
-      prefix = buf2.instance_eval{ @buffer_path_prefix }
-      suffix = buf2.instance_eval{ @buffer_path_suffix }
+      buf2.configure({ 'buffer_path' => buffer_path_for_resume_test })
+      prefix = buf2.instance_eval { @buffer_path_prefix }
+      suffix = buf2.instance_eval { @buffer_path_suffix }
 
       # buf1.start -> resume is normal operation, but now, we cannot it.
       queue, map = buf2.resume
@@ -574,18 +572,18 @@ module FluentFileBufferTest
       buffer_path_for_resume_test_2 = bufpath('resume_fix.*.log')
 
       buf1 = Fluent::FileBuffer.new
-      buf1.configure({'buffer_path' => buffer_path_for_resume_test_1})
+      buf1.configure({ 'buffer_path' => buffer_path_for_resume_test_1 })
       buf1.start
 
       buf1.emit('key1', "x1\ty1\tz1\n", chain)
       buf1.emit('key1', "x2\ty2\tz2\n", chain)
 
-      assert buf1.instance_eval{ @map['key1'] }
+      assert buf1.instance_eval { @map['key1'] }
 
       buf1.shutdown
 
       buf2 = Fluent::FileBuffer.new
-      buf2.configure({'buffer_path' => buffer_path_for_resume_test_2}) # other buffer_path
+      buf2.configure({ 'buffer_path' => buffer_path_for_resume_test_2 }) # other buffer_path
 
       queue, map = buf2.resume
 

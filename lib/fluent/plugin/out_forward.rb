@@ -29,11 +29,11 @@ module Fluent
 
     def initialize
       super
-      require "base64"
+      require 'base64'
       require 'socket'
       require 'fileutils'
       require 'fluent/plugin/socket_util'
-      @nodes = []  #=> [Node]
+      @nodes = [] #=> [Node]
     end
 
     config_param :send_timeout, :time, default: 60
@@ -46,20 +46,20 @@ module Fluent
       when 'none'
         :none
       else
-        raise ConfigError, "forward output heartbeat type should be 'tcp', 'udp', or 'none'"
+        fail ConfigError, "forward output heartbeat type should be 'tcp', 'udp', or 'none'"
       end
     end
     config_param :heartbeat_interval, :time, default: 1
     config_param :recover_wait, :time, default: 10
     config_param :hard_timeout, :time, default: 60
-    config_param :expire_dns_cache, :time, default: nil  # 0 means disable cache
+    config_param :expire_dns_cache, :time, default: nil # 0 means disable cache
     config_param :phi_threshold, :integer, default: 16
     config_param :phi_failure_detector, :bool, default: true
 
     # if any options added that requires extended forward api, fix @extend_internal_protocol
 
-    config_param :require_ack_response, :bool, default: false  # require in_forward to respond with ack
-    config_param :ack_response_timeout, :time, default: 190  # 0 means do not wait for ack responses
+    config_param :require_ack_response, :bool, default: false # require in_forward to respond with ack
+    config_param :ack_response_timeout, :time, default: 190 # 0 means do not wait for ack responses
     # Linux default tcp_syn_retries is 5 (in many environment)
     # 3 + 6 + 12 + 24 + 48 + 96 -> 189 (sec)
     config_param :dns_round_robin, :bool, default: false # heartbeat_type 'udp' is not available for this
@@ -96,12 +96,12 @@ module Fluent
 
       if @dns_round_robin
         if @heartbeat_type == :udp
-          raise ConfigError, "forward output heartbeat type must be 'tcp' or 'none' to use dns_round_robin option"
+          fail ConfigError, "forward output heartbeat type must be 'tcp' or 'none' to use dns_round_robin option"
         end
       end
 
-      conf.elements.each {|e|
-        next if e.name != "server"
+      conf.elements.each do|e|
+        next if e.name != 'server'
 
         host = e['host']
         port = e['port']
@@ -113,22 +113,20 @@ module Fluent
         standby = !!e['standby']
 
         name = e['name']
-        unless name
-          name = "#{host}:#{port}"
-        end
+        name = "#{host}:#{port}" unless name
 
         failure = FailureDetector.new(@heartbeat_interval, @hard_timeout, Time.now.to_i.to_f)
 
         node_conf = NodeConfig.new(name, host, port, weight, standby, failure,
-          @phi_threshold, recover_sample_size, @expire_dns_cache, @phi_failure_detector, @dns_round_robin)
+                                   @phi_threshold, recover_sample_size, @expire_dns_cache, @phi_failure_detector, @dns_round_robin)
 
         if @heartbeat_type == :none
           @nodes << NoneHeartbeatNode.new(log, node_conf)
         else
           @nodes << Node.new(log, node_conf)
         end
-        log.info "adding forwarding server '#{name}'", host:host, port:port, weight:weight, plugin_id:plugin_id
-      }
+        log.info "adding forwarding server '#{name}'", host: host, port: port, weight: weight, plugin_id: plugin_id
+      end
     end
 
     def start
@@ -159,7 +157,7 @@ module Fluent
     def shutdown
       @finished = true
       if @loop
-        @loop.watchers.each {|w| w.detach }
+        @loop.watchers.each(&:detach)
         @loop.stop
       end
       @thread.join if @thread
@@ -169,7 +167,7 @@ module Fluent
     def run
       @loop.run if @loop
     rescue
-      log.error "unexpected error", error:$!.to_s
+      log.error 'unexpected error', error: $ERROR_INFO.to_s
       log.error_backtrace
     end
 
@@ -189,51 +187,47 @@ module Fluent
             return
           rescue
             # for load balancing during detecting crashed servers
-            error = $!  # use the latest error
+            error = $ERROR_INFO # use the latest error
           end
         end
       end
 
       if error
-        raise error
+        fail error
       else
-        raise "no nodes are available"  # TODO message
+        fail 'no nodes are available' # TODO: message
       end
     end
 
     private
 
     def rebuild_weight_array
-      standby_nodes, regular_nodes = @nodes.partition {|n|
-        n.standby?
-      }
+      standby_nodes, regular_nodes = @nodes.partition(&:standby?)
 
       lost_weight = 0
-      regular_nodes.each {|n|
-        unless n.available?
-          lost_weight += n.weight
-        end
-      }
-      log.debug "rebuilding weight array", lost_weight:lost_weight
+      regular_nodes.each do|n|
+        lost_weight += n.weight unless n.available?
+      end
+      log.debug 'rebuilding weight array', lost_weight: lost_weight
 
       if lost_weight > 0
-        standby_nodes.each {|n|
+        standby_nodes.each do|n|
           if n.available?
             regular_nodes << n
-            log.warn "using standby node #{n.host}:#{n.port}", weight:n.weight
+            log.warn "using standby node #{n.host}:#{n.port}", weight: n.weight
             lost_weight -= n.weight
             break if lost_weight <= 0
           end
-        }
+        end
       end
 
       weight_array = []
-      gcd = regular_nodes.map {|n| n.weight }.inject(0) {|r,w| r.gcd(w) }
-      regular_nodes.each {|n|
-        (n.weight / gcd).times {
+      gcd = regular_nodes.map(&:weight).inject(0) { |r, w| r.gcd(w) }
+      regular_nodes.each do|n|
+        (n.weight / gcd).times do
           weight_array << n
-        }
-      }
+        end
+      end
 
       # for load balancing during detecting crashed servers
       coe = (regular_nodes.size * 6) / weight_array.size
@@ -257,7 +251,7 @@ module Fluent
       end
     end
 
-    #FORWARD_TCP_HEARTBEAT_DATA = FORWARD_HEADER + ''.to_msgpack + [].to_msgpack
+    # FORWARD_TCP_HEARTBEAT_DATA = FORWARD_HEADER + ''.to_msgpack + [].to_msgpack
     def send_heartbeat_tcp(node)
       sock = connect(node)
       begin
@@ -265,8 +259,8 @@ module Fluent
         sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_LINGER, opt)
         opt = [@send_timeout.to_i, 0].pack('L!L!')  # struct timeval
         # don't send any data to not cause a compatibility problem
-        #sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, opt)
-        #sock.write FORWARD_TCP_HEARTBEAT_DATA
+        # sock.setsockopt(Socket::SOL_SOCKET, Socket::SO_SNDTIMEO, opt)
+        # sock.write FORWARD_TCP_HEARTBEAT_DATA
         node.heartbeat(true)
       ensure
         sock.close
@@ -286,20 +280,20 @@ module Fluent
         sock.write forward_header
 
         # writeRaw(tag)
-        sock.write tag.to_msgpack  # tag
+        sock.write tag.to_msgpack # tag
 
         # beginRaw(size)
         sz = chunk.size
-        #if sz < 32
+        # if sz < 32
         #  # FixRaw
         #  sock.write [0xa0 | sz].pack('C')
-        #elsif sz < 65536
+        # elsif sz < 65536
         #  # raw 16
         #  sock.write [0xda, sz].pack('Cn')
-        #else
+        # else
         # raw 32
         sock.write [0xdb, sz].pack('CN')
-        #end
+        # end
 
         # writeRawBody(packed_es)
         chunk.write_to(sock)
@@ -321,14 +315,14 @@ module Fluent
               if raw_data.empty?
                 @log.warn "node #{node.host}:#{node.port} closed the connection. regard it as unavailable."
                 node.disable!
-                raise ForwardOutputConnectionClosedError, "node #{node.host}:#{node.port} closed connection"
+                fail ForwardOutputConnectionClosedError, "node #{node.host}:#{node.port} closed connection"
               else
                 # Serialization type of the response is same as sent data.
                 res = MessagePack.unpack(raw_data)
 
                 if res['ack'] != option['chunk']
                   # Some errors may have occured when ack and chunk id is different, so send the chunk again.
-                  raise ForwardOutputResponseError, "ack in response and chunk id in sent data are different"
+                  fail ForwardOutputResponseError, 'ack in response and chunk id in sent data are different'
                 end
               end
 
@@ -339,20 +333,20 @@ module Fluent
               # (2) the node does support sending response but responses have not arrived for some reasons.
               @log.warn "no response from #{node.host}:#{node.port}. regard it as unavailable."
               node.disable!
-              raise ForwardOutputACKTimeoutError, "node #{node.host}:#{node.port} does not return ACK"
+              fail ForwardOutputACKTimeoutError, "node #{node.host}:#{node.port} does not return ACK"
             end
           end
         end
 
         node.heartbeat(false)
-        return res  # for test
+        return res # for test
       ensure
         sock.close
       end
     end
 
     def connect(node)
-      # TODO unix socket?
+      # TODO: unix socket?
       TCPSocket.new(node.resolved_host, node.port)
     end
 
@@ -365,28 +359,26 @@ module Fluent
       def on_timer
         @callback.call
       rescue
-        # TODO log?
+        # TODO: log?
       end
     end
 
     def on_timer
       return if @finished
-      @nodes.each {|n|
-        if n.tick
-          rebuild_weight_array
-        end
+      @nodes.each do|n|
+        rebuild_weight_array if n.tick
         begin
-          #log.trace "sending heartbeat #{n.host}:#{n.port} on #{@heartbeat_type}"
+          # log.trace "sending heartbeat #{n.host}:#{n.port} on #{@heartbeat_type}"
           if @heartbeat_type == :tcp
             send_heartbeat_tcp(n)
           else
             @usock.send "\0", 0, Socket.pack_sockaddr_in(n.port, n.resolved_host)
           end
         rescue Errno::EAGAIN, Errno::EWOULDBLOCK, Errno::EINTR, Errno::ECONNREFUSED
-          # TODO log
-          log.debug "failed to send heartbeat packet to #{n.host}:#{n.port}", error:$!.to_s
+          # TODO: log
+          log.debug "failed to send heartbeat packet to #{n.host}:#{n.port}", error: $ERROR_INFO.to_s
         end
-      }
+      end
     end
 
     class HeartbeatHandler < Coolio::IO
@@ -407,22 +399,20 @@ module Fluent
         sockaddr = Socket.pack_sockaddr_in(port, host)
         @callback.call(sockaddr, msg)
       rescue
-        # TODO log?
+        # TODO: log?
       end
     end
 
-    def on_heartbeat(sockaddr, msg)
+    def on_heartbeat(sockaddr, _msg)
       port, host = Socket.unpack_sockaddr_in(sockaddr)
-      if node = @nodes.find {|n| n.sockaddr == sockaddr }
-        #log.trace "heartbeat from '#{node.name}'", host:node.host, port:node.port
-        if node.heartbeat
-          rebuild_weight_array
-        end
+      if node = @nodes.find { |n| n.sockaddr == sockaddr }
+        # log.trace "heartbeat from '#{node.name}'", host:node.host, port:node.port
+        rebuild_weight_array if node.heartbeat
       end
     end
 
-    NodeConfig = Struct.new("NodeConfig", :name, :host, :port, :weight, :standby, :failure,
-      :phi_threshold, :recover_sample_size, :expire_dns_cache, :phi_failure_detector, :dns_round_robin)
+    NodeConfig = Struct.new('NodeConfig', :name, :host, :port, :weight, :standby, :failure,
+                            :phi_threshold, :recover_sample_size, :expire_dns_cache, :phi_failure_detector, :dns_round_robin)
 
     class Node
       def initialize(log, conf)
@@ -437,12 +427,12 @@ module Fluent
 
         @resolved_host = nil
         @resolved_time = 0
-        resolved_host  # check dns
+        resolved_host # check dns
       end
 
       attr_reader :conf
       attr_reader :name, :host, :port, :weight
-      attr_reader :sockaddr  # used by on_heartbeat
+      attr_reader :sockaddr # used by on_heartbeat
       attr_reader :failure, :available # for test
 
       def available?
@@ -488,42 +478,40 @@ module Fluent
 
       def tick
         now = Time.now.to_f
-        if !@available
-          if @failure.hard_timeout?(now)
-            @failure.clear
-          end
+        unless @available
+          @failure.clear if @failure.hard_timeout?(now)
           return nil
         end
 
         if @failure.hard_timeout?(now)
-          @log.warn "detached forwarding server '#{@name}'", host:@host, port:@port, hard_timeout:true
+          @log.warn "detached forwarding server '#{@name}'", host: @host, port: @port, hard_timeout: true
           @available = false
-          @resolved_host = nil  # expire cached host
+          @resolved_host = nil # expire cached host
           @failure.clear
           return true
         end
 
         if @conf.phi_failure_detector
           phi = @failure.phi(now)
-          #$log.trace "phi '#{@name}'", host:@host, port:@port, phi:phi
+          # $log.trace "phi '#{@name}'", host:@host, port:@port, phi:phi
           if phi > @conf.phi_threshold
-            @log.warn "detached forwarding server '#{@name}'", host:@host, port:@port, phi:phi
+            @log.warn "detached forwarding server '#{@name}'", host: @host, port: @port, phi: phi
             @available = false
-            @resolved_host = nil  # expire cached host
+            @resolved_host = nil # expire cached host
             @failure.clear
             return true
           end
         end
-        return false
+        false
       end
 
-      def heartbeat(detect=true)
+      def heartbeat(detect = true)
         now = Time.now.to_f
         @failure.add(now)
-        #@log.trace "heartbeat from '#{@name}'", host:@host, port:@port, available:@available, sample_size:@failure.sample_size
+        # @log.trace "heartbeat from '#{@name}'", host:@host, port:@port, available:@available, sample_size:@failure.sample_size
         if detect && !@available && @failure.sample_size > @conf.recover_sample_size
           @available = true
-          @log.warn "recovered forwarding server '#{@name}'", host:@host, port:@port
+          @log.warn "recovered forwarding server '#{@name}'", host: @host, port: @port
           return true
         else
           return nil
@@ -545,7 +533,7 @@ module Fluent
         false
       end
 
-      def heartbeat(detect=true)
+      def heartbeat(_detect = true)
         true
       end
     end
@@ -587,11 +575,11 @@ module Fluent
         # Calculate weighted moving average
         mean_usec = 0
         fact = 0
-        @window.each_with_index {|gap,i|
-          mean_usec += gap * (1+i)
-          fact += (1+i)
-        }
-        mean_usec = mean_usec / fact
+        @window.each_with_index do|gap, i|
+          mean_usec += gap * (1 + i)
+          fact += (1 + i)
+        end
+        mean_usec /= fact
 
         # Normalize arrive intervals into 1sec
         mean = (mean_usec.to_f / 1e6) - @heartbeat_interval + 1
@@ -600,7 +588,7 @@ module Fluent
         t = now - @last - @heartbeat_interval + 1
         phi = PHI_FACTOR * t / mean
 
-        return phi
+        phi
       end
 
       def sample_size
@@ -614,7 +602,7 @@ module Fluent
     end
 
     ## TODO
-    #class RPC
+    # class RPC
     #  def initialize(this)
     #    @this = this
     #  end
@@ -639,6 +627,6 @@ module Fluent
     #
     #  def remove_node(host, port)
     #  end
-    #end
+    # end
   end
 end

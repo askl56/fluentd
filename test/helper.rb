@@ -9,7 +9,7 @@ if ENV['SIMPLE_COV']
         begin
           initialize(*args, &block)
         rescue Encoding::UndefinedConversionError
-          @src = "".force_encoding('UTF-8')
+          @src = ''.force_encoding('UTF-8')
         end
       end
       m
@@ -58,7 +58,7 @@ def ipv6_enabled?
   require 'socket'
 
   begin
-    TCPServer.open("::1", 0)
+    TCPServer.open('::1', 0)
     true
   rescue
     false

@@ -6,19 +6,19 @@ class GCStatInputTest < Test::Unit::TestCase
     Fluent::Test.setup
   end
 
-  CONFIG = %[
+  CONFIG = %(
     emit_interval 1
     tag t1
-  ]
+  )
 
-  def create_driver(conf=CONFIG)
+  def create_driver(conf = CONFIG)
     Fluent::Test::InputTestDriver.new(Fluent::GCStatInput).configure(conf)
   end
 
   def test_configure
     d = create_driver
     assert_equal(1, d.instance.emit_interval)
-    assert_equal("t1", d.instance.tag)
+    assert_equal('t1', d.instance.tag)
   end
 
   def test_emit

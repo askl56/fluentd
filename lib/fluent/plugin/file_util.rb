@@ -26,7 +26,7 @@ module Fluent
       return File.writable?(path) if File.exist?(path)
 
       dirname = File.dirname(path)
-      return false if !File.directory?(dirname)
+      return false unless File.directory?(dirname)
       File.writable?(dirname)
     end
     module_function :writable?
@@ -40,11 +40,9 @@ module Fluent
       return File.writable?(path) if File.exist?(path)
 
       dirname = File.dirname(path)
-      until File.exist?(dirname)
-        dirname = File.dirname(dirname)
-      end
+      dirname = File.dirname(dirname) until File.exist?(dirname)
 
-      return false if !File.directory?(dirname)
+      return false unless File.directory?(dirname)
       File.writable?(dirname)
     end
     module_function :writable_p?

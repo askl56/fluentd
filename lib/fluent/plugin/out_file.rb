@@ -20,7 +20,7 @@ module Fluent
 
     SUPPORTED_COMPRESS = {
       'gz' => :gz,
-      'gzip' => :gz,
+      'gzip' => :gz
     }
 
     config_param :path, :string
@@ -28,9 +28,7 @@ module Fluent
     config_param :append, :bool, default: false
     config_param :compress, default: nil do |val|
       c = SUPPORTED_COMPRESS[val]
-      unless c
-        raise ConfigError, "Unsupported compression algorithm '#{val}'"
-      end
+      fail ConfigError, "Unsupported compression algorithm '#{val}'" unless c
       c
     end
     config_param :symlink_path, :string, default: nil
@@ -47,22 +45,22 @@ module Fluent
         @path = path
       end
       unless @path
-        raise ConfigError, "'path' parameter is required on file output"
+        fail ConfigError, "'path' parameter is required on file output"
       end
 
       if pos = @path.index('*')
-        @path_prefix = @path[0,pos]
-        @path_suffix = @path[pos+1..-1]
+        @path_prefix = @path[0, pos]
+        @path_suffix = @path[pos + 1..-1]
         conf['buffer_path'] ||= "#{@path}"
       else
-        @path_prefix = @path+"."
-        @path_suffix = ".log"
+        @path_prefix = @path + '.'
+        @path_suffix = '.log'
         conf['buffer_path'] ||= "#{@path}.*"
       end
 
       test_path = generate_path(Time.now.strftime(@time_slice_format))
       unless ::Fluent::FileUtil.writable_p?(test_path)
-        raise ConfigError, "out_file: `#{test_path}` is not writable"
+        fail ConfigError, "out_file: `#{test_path}` is not writable"
       end
 
       super
@@ -83,21 +81,21 @@ module Fluent
 
       case @compress
       when nil
-        File.open(path, "a", DEFAULT_FILE_PERMISSION) {|f|
+        File.open(path, 'a', DEFAULT_FILE_PERMISSION) do|f|
           chunk.write_to(f)
-        }
+        end
       when :gz
-        File.open(path, "a", DEFAULT_FILE_PERMISSION) {|f|
+        File.open(path, 'a', DEFAULT_FILE_PERMISSION) do|f|
           gz = Zlib::GzipWriter.new(f)
           chunk.write_to(gz)
           gz.close
-        }
+        end
       end
 
-      return path  # for test
+      path # for test
     end
 
-    def secondary_init(primary)
+    def secondary_init(_primary)
       # don't warn even if primary.class is not FileOutput
     end
 
@@ -108,7 +106,7 @@ module Fluent
       when nil
         ''
       when :gz
-        ".gz"
+        '.gz'
       end
     end
 

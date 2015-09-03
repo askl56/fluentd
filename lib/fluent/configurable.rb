@@ -29,7 +29,7 @@ module Fluent
       # to simulate implicit 'attr_accessor' by config_param / config_section and its value by config_set_default
       proxy = self.class.merged_configure_proxy
       proxy.params.keys.each do |name|
-        if proxy.defaults.has_key?(name)
+        if proxy.defaults.key?(name)
           instance_variable_set("@#{name}".to_sym, proxy.defaults[name])
         end
       end
@@ -55,9 +55,9 @@ module Fluent
       root = Fluent::Config::SectionGenerator.generate(proxy, conf, logger, plugin_class)
       @config_root_section = root
 
-      root.instance_eval{ @params.keys }.each do |param_name|
+      root.instance_eval { @params.keys }.each do |param_name|
         varname = "@#{param_name}".to_sym
-        if (! root[param_name].nil?) || instance_variable_get(varname).nil?
+        if (!root[param_name].nil?) || instance_variable_get(varname).nil?
           instance_variable_set(varname, root[param_name])
         end
       end
@@ -83,7 +83,7 @@ module Fluent
     module ClassMethods
       def configure_proxy_map
         map = {}
-        self.define_singleton_method(:configure_proxy_map){ map }
+        define_singleton_method(:configure_proxy_map) { map }
         map
       end
 
@@ -111,7 +111,7 @@ module Fluent
       end
 
       def merged_configure_proxy
-        configurables = ancestors.reverse.select{ |a| a.respond_to?(:configure_proxy) }
+        configurables = ancestors.reverse.select { |a| a.respond_to?(:configure_proxy) }
 
         # 'a.object_id.to_s' is to support anonymous class
         #   which created in tests to overwrite original behavior temporally
@@ -119,7 +119,7 @@ module Fluent
         # p Module.new.name   #=> nil
         # p Class.new.name    #=> nil
         # p AnyGreatClass.dup.name #=> nil
-        configurables.map{ |a| a.configure_proxy(a.name || a.object_id.to_s) }.reduce(:merge)
+        configurables.map { |a| a.configure_proxy(a.name || a.object_id.to_s) }.reduce(:merge)
       end
     end
   end

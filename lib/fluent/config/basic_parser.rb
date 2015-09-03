@@ -16,7 +16,6 @@
 
 module Fluent
   module Config
-
     require 'stringio'
     require 'fluent/config/error'
 
@@ -85,34 +84,34 @@ module Fluent
       end
 
       def parse_error!(message)
-        raise ConfigParseError, "#{message} at #{error_sample}"
+        fail ConfigParseError, "#{message} at #{error_sample}"
       end
 
       def error_sample
         pos = @ss.pos
 
         lines = @ss.string.lines.to_a
-        lines.each_with_index { |line, ln|
+        lines.each_with_index do |line, ln|
           if line.size >= pos
             msgs = ["line #{ln + 1},#{pos}\n"]
 
             if ln > 0
               last_line = lines[ln - 1]
-              msgs << "%3s: %s" % [ln, last_line]
+              msgs << '%3s: %s' % [ln, last_line]
             end
 
-            msgs << "%3s: %s" % [ln + 1, line]
+            msgs << '%3s: %s' % [ln + 1, line]
             msgs << "\n     #{'-' * pos}^\n"
 
             if next_line = lines[ln + 1]
-              msgs << "%3s: %s" % [ln + 2, next_line]
+              msgs << '%3s: %s' % [ln + 2, next_line]
             end
 
             return msgs.join
           end
           pos -= line.size
           last_line = line
-        }
+        end
       end
     end
   end

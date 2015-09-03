@@ -22,22 +22,22 @@ module Fluent
     end
 
     def register(instance, name, &block)
-      @mutex.synchronize {
+      @mutex.synchronize do
         (@entries[instance.object_id] ||= {})[name] = block
-      }
+      end
       nil
     end
 
     def each(&block)
-      @mutex.synchronize {
-        @entries.each {|obj_id,hash|
+      @mutex.synchronize do
+        @entries.each do|_obj_id, hash|
           record = {}
-          hash.each_pair {|name,block|
+          hash.each_pair do|name, block|
             record[name] = block.call
-          }
+          end
           block.call(record)
-        }
-      }
+        end
+      end
     end
   end
 
@@ -45,4 +45,3 @@ module Fluent
   # The interface may be changed
   Status = StatusClass.new
 end
-
